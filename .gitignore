@@ -1,0 +1,24 @@
+# Python / Flask
+__pycache__/
+*.py[cod]
+*$py.class
+env/
+venv/
+.env
+.venv/
+*.sqlite3
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Exclude Local testing DB so production doesn't overwrite
+# localbasket.db
+
+# Keep empty folders
+!.keep

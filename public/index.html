@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Local Basket – Premium</title>
+<meta name="description" content="Local Basket: fresh organic produce delivered."/>
+<link rel="manifest" href="/manifest.json"/>
+<meta name="theme-color" content="#173901"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>
+tailwind.config={darkMode:"class",theme:{extend:{colors:{
+  "primary":"#173901","secondary":"#954a00",
+  "surface":"#fef9f1","surface-container":"#f2ede5","surface-container-low":"#f8f3eb","surface-container-high":"#ece8e0",
+  "on-surface":"#1d1c17","outline-variant":"#c3c9b9","primary-container":"#2d5016","primary-fixed":"#c4efa3"
+},fontFamily:{headline:["Playfair Display","serif"],body:["Inter","sans-serif"]}}}}
+</script>
+<style>
+.material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+.hide-scrollbar::-webkit-scrollbar{display:none}.hide-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+[data-page]{display:none}[data-page].active{display:block}
+.toast{position:fixed;bottom:6rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--tw-colors-primary,#173901);color:#fff;padding:.5rem 1.2rem;border-radius:9999px;font-size:.8rem;font-weight:600;z-index:999;opacity:0;transition:all .3s;pointer-events:none}
+.dark .toast{background:#c4efa3;color:#173901}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.skeleton{animation:pulse 1.5s infinite;background:linear-gradient(90deg,#f2ede5 25%,#f8f3eb 50%,#f2ede5 75%);background-size:200% 100%}
+.dark .skeleton{background:linear-gradient(90deg,#2a2a2a 25%,#333 50%,#2a2a2a 75%);background-size:200% 100%}
+@keyframes pulse{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.dark body{background-color:#121212;color:#e8e8e8}
+.dark .bg-surface{background-color:#121212}
+.dark .bg-surface-container{background-color:#1e1e1e}
+.dark .bg-surface-container-low{background-color:#181818}
+.dark .text-on-surface{color:#e8e8e8}
+.dark .bg-white{background-color:#1e1e1e}
+.badge-bounce{animation:bp .3s ease both}@keyframes bp{50%{transform:scale(1.4)}}
+dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
+.dark dialog{background:#1e1e1e;color:#e8e8e8}
+.dark dialog input,.dark dialog textarea,.dark dialog select{background:#121212;border-color:#333;color:#e8e8e8}
+.track-step.done .track-dot,.track-step.done .track-line{background:#173901}
+.dark .track-step.done .track-dot,.dark .track-step.done .track-line{background:#c4efa3}
+.oos{opacity:.5;pointer-events:none;filter:grayscale(100%)}
+</style>
+</head>
+<body class="bg-surface text-on-surface font-body min-h-screen transition-colors duration-300">
+<div class="toast" id="toast"></div>
+
+<!-- Auth Modal -->
+<dialog id="auth-modal" class="rounded-xl w-full max-w-sm shadow-2xl p-0">
+  <div class="p-6 space-y-4">
+    <div class="flex justify-between items-center"><h3 id="auth-title" class="font-headline text-xl font-bold text-primary dark:text-primary-fixed">Login</h3><button onclick="document.getElementById('auth-modal').close()"><span class="material-symbols-outlined">close</span></button></div>
+    <div id="auth-login-form" class="space-y-3">
+      <input id="a-email" type="email" placeholder="Email" class="w-full px-4 py-2 border rounded-lg text-sm"/>
+      <input id="a-pass" type="password" placeholder="Password" class="w-full px-4 py-2 border rounded-lg text-sm"/>
+      <button onclick="doLogin()" class="w-full bg-primary text-white py-2 rounded-lg font-bold">Login</button>
+      <p class="text-xs text-center text-gray-500">No account? <a href="#" onclick="toggleAuth()" class="text-secondary font-bold">Sign up</a></p>
+    </div>
+    <div id="auth-signup-form" class="hidden space-y-3">
+      <input id="s-name" type="text" placeholder="Full Name" class="w-full px-4 py-2 border rounded-lg text-sm"/>
+      <input id="s-email" type="email" placeholder="Email" class="w-full px-4 py-2 border rounded-lg text-sm"/>
+      <input id="s-pass" type="password" placeholder="Password" class="w-full px-4 py-2 border rounded-lg text-sm"/>
+      <button onclick="doSignup()" class="w-full bg-primary text-white py-2 rounded-lg font-bold">Sign Up</button>
+      <p class="text-xs text-center text-gray-500">Have an account? <a href="#" onclick="toggleAuth()" class="text-secondary font-bold">Login</a></p>
+    </div>
+    <p id="auth-err" class="text-red-500 text-xs text-center hidden"></p>
+  </div>
+</dialog>
+
+<!-- Main Nav -->
+<nav class="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none pb-safe">
+  <div class="bg-white/90 dark:bg-[#1e1e1e]/90 backdrop-blur-xl mx-3 mb-3 rounded-full shadow-lg flex justify-around items-center w-full max-w-md px-2 py-2 pointer-events-auto border border-black/5 dark:border-white/5">
+    <button onclick="nav('home')" class="nb flex flex-col items-center px-3 py-1.5 rounded-full" data-n="home"><span class="material-symbols-outlined text-[20px]">home</span><span class="text-[9px] font-medium mt-0.5">Home</span></button>
+    <button onclick="nav('search')" class="nb flex flex-col items-center px-3 py-1.5 rounded-full" data-n="search"><span class="material-symbols-outlined text-[20px]">search</span><span class="text-[9px] font-medium mt-0.5">Browse</span></button>
+    <button onclick="nav('cart')" class="nb flex flex-col items-center px-3 py-1.5 rounded-full relative" data-n="cart"><span class="material-symbols-outlined text-[20px]">shopping_basket</span><span class="text-[9px] font-medium mt-0.5">Basket</span><span id="cb" class="absolute -top-1 right-0 bg-secondary text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center hidden">0</span></button>
+    <button onclick="nav('account')" class="nb flex flex-col items-center px-3 py-1.5 rounded-full" data-n="account"><span class="material-symbols-outlined text-[20px]">person</span><span class="text-[9px] font-medium mt-0.5">Account</span></button>
+  </div>
+</nav>
+
+<!-- HOME -->
+<div id="page-home" data-page class="pb-24">
+  <header class="bg-surface/90 dark:bg-[#121212]/90 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between px-3 py-2.5 border-b border-black/5 dark:border-white/5">
+    <div class="flex items-center gap-2 cursor-pointer" onclick="nav('account')">
+      <div class="bg-surface-container rounded-full p-1 text-primary dark:text-primary-fixed"><span class="material-symbols-outlined text-[16px]">location_on</span></div>
+      <div><span class="block text-[8px] uppercase tracking-wider opacity-60">Delivering to</span><span id="hdr-addr" class="block text-xs font-bold text-primary dark:text-white">Select setup <span class="material-symbols-outlined text-[10px]">expand_more</span></span></div>
+    </div>
+    <div class="text-lg font-headline italic text-primary dark:text-primary-fixed">Local Basket</div>
+    <div class="flex items-center gap-1">
+      <button onclick="toggleDark()" class="p-1.5 rounded-full hover:bg-surface-container"><span class="material-symbols-outlined text-[18px]">dark_mode</span></button>
+    </div>
+  </header>
+  <main class="max-w-3xl mx-auto px-3 space-y-6 mt-3">
+    <!-- Hero & Flash Sales -->
+    <div id="hdr-skeleton" class="w-full h-40 rounded-xl skeleton"></div>
+    <div id="hdr-content" class="hidden space-y-4">
+      <section class="flex justify-between items-end"><h1 class="font-headline text-2xl sm:text-3xl">Fresh from<br/><span class="italic">Morning Harvest</span></h1></section>
+      <section id="flash-sales" class="flex overflow-x-auto gap-3 hide-scrollbar -mx-3 px-3"></section>
+    </div>
+    <!-- Catchy Categories -->
+    <section>
+      <div class="flex items-center justify-between mb-3"><h3 class="font-headline text-base">Explore Categories</h3></div>
+      <div class="flex overflow-x-auto gap-3 hide-scrollbar -mx-3 px-3" id="home-cats"></div>
+    </section>
+    <!-- Recommendations -->
+    <section>
+      <h3 class="font-headline text-base mb-3">For You</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="home-recs"></div>
+    </section>
+    <!-- Subscription Box Pitch -->
+    <section class="bg-primary-container text-white p-4 rounded-xl relative overflow-hidden">
+      <div class="relative z-10">
+        <h3 class="font-headline text-xl mb-1">Weekly Farm Boxes</h3>
+        <p class="text-xs text-white/70 mb-3 max-w-[200px]">Get fresh seasonal produce delivered every week automatically.</p>
+        <button onclick="nav('account')" class="bg-white text-primary px-4 py-1.5 font-bold text-xs rounded-full">Subscribe ₹499/wk</button>
+      </div>
+      <span class="material-symbols-outlined absolute -right-4 -bottom-4 text-[100px] text-white/10" style="font-variation-settings:'FILL' 1">featured_seasonal_and_gifts</span>
+    </section>
+  </main>
+</div>
+
+<!-- SEARCH -->
+<div id="page-search" data-page class="pb-24">
+  <header class="bg-surface/90 dark:bg-[#121212]/90 backdrop-blur-md sticky top-0 z-40 px-3 py-2.5 border-b border-black/5 dark:border-white/5">
+    <div class="relative"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 opacity-50 text-[18px]">search</span>
+    <input id="si" type="text" placeholder="Search (e.g. organic carrots)..." class="w-full pl-10 pr-3 py-2.5 bg-surface-container dark:bg-[#1e1e1e] border-0 rounded-xl text-sm outline-none focus:ring-1 focus:ring-primary h-10" oninput="doSearch()"/></div>
+    <div class="flex gap-2 mt-3 overflow-x-auto hide-scrollbar" id="search-cats"></div>
+  </header>
+  <main class="max-w-3xl mx-auto px-3 py-3"><div id="sr" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div></main>
+</div>
+
+<!-- PRODUCT DETAIL -->
+<div id="page-product" data-page class="pb-24">
+  <header class="bg-surface/90 dark:bg-[#121212]/90 backdrop-blur-md sticky top-0 z-40 flex items-center gap-2 px-3 py-2.5 border-b border-black/5 dark:border-white/5">
+    <button onclick="nav(prev)" class="p-1.5 rounded-full hover:bg-surface-container"><span class="material-symbols-outlined text-[20px]">arrow_back</span></button>
+    <span class="font-headline text-base">Product Details</span>
+  </header>
+  <div id="pd-skeleton" class="max-w-lg mx-auto p-3 space-y-4"><div class="w-full h-64 skeleton rounded-xl"></div><div class="w-3/4 h-6 skeleton rounded"></div><div class="w-1/2 h-4 skeleton rounded"></div></div>
+  <div id="pd" class="max-w-lg mx-auto px-3 py-3 space-y-5 hidden"></div>
+</div>
+
+<!-- CART -->
+<div id="page-cart" data-page class="pb-24">
+  <header class="bg-surface/90 dark:bg-[#121212]/90 backdrop-blur-md sticky top-0 z-40 px-3 py-2.5 border-b border-black/5 dark:border-white/5"><span class="font-headline text-lg italic text-primary dark:text-primary-fixed">Local Basket</span></header>
+  <main class="max-w-lg mx-auto px-3 py-4 space-y-4">
+    <div class="flex items-end justify-between"><h1 class="text-2xl font-headline font-bold">Your Basket</h1><span id="cl" class="text-xs bg-secondary/10 text-secondary px-2 py-0.5 rounded-full font-bold">0 Items</span></div>
+    <div id="ce" class="text-center py-12 opacity-50 hidden"><span class="material-symbols-outlined text-4xl mb-2">shopping_basket</span><p>Basket is empty</p></div>
+    <div id="ci" class="space-y-3"></div>
+    <div id="cs" class="hidden space-y-5 mt-4">
+      <div id="cart-addr" class="bg-surface-container p-3 rounded-xl text-sm flex justify-between items-center cursor-pointer" onclick="nav('account')"><div class="flex items-center gap-2 text-primary dark:text-primary-fixed"><span class="material-symbols-outlined text-lg">location_on</span><span id="cart-addr-txt" class="font-medium">Select Address</span></div><span class="material-symbols-outlined text-sm">chevron_right</span></div>
+      <div><h3 class="font-headline text-base mb-2">Delivery Time</h3><div class="flex overflow-x-auto gap-2 hide-scrollbar -mx-3 px-3" id="cart-slots"></div></div>
+      <div class="bg-surface-container rounded-xl p-4 space-y-3">
+        <h3 class="font-headline text-base">Summary</h3>
+        <div id="os" class="space-y-1.5 text-xs opacity-80"></div>
+        <div class="flex justify-between font-bold" id="oloyalty"></div>
+        <div class="flex justify-between font-headline text-lg font-bold border-t border-black/10 dark:border-white/10 pt-2 mt-2"><span>To Pay</span><span id="ot">₹0</span></div>
+        <button onclick="po()" class="w-full bg-[#E8873A] text-white py-3.5 rounded-xl font-bold text-sm shadow flex justify-center items-center gap-2">Place Order <span class="material-symbols-outlined">arrow_forward</span></button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ACCOUNT & ORDERS -->
+<div id="page-account" data-page class="pb-24">
+  <header class="bg-surface/90 dark:bg-[#121212]/90 backdrop-blur-md sticky top-0 z-40 px-3 py-2.5 border-b border-black/5 dark:border-white/5"><span class="font-headline text-lg italic">Account</span></header>
+  <main class="max-w-lg mx-auto px-3 py-4 space-y-6">
+    <div id="acc-guest" class="text-center py-10 space-y-4">
+      <span class="material-symbols-outlined text-5xl opacity-40">account_circle</span>
+      <h2 class="font-headline text-xl">Welcome to Local Basket</h2>
+      <button onclick="showAuth('login')" class="bg-primary text-white px-8 py-2.5 rounded-full font-bold">Login to Continue</button>
+    </div>
+    <div id="acc-user" class="hidden space-y-6">
+      <div class="flex justify-between items-center bg-surface-container p-4 rounded-xl">
+        <div><h2 id="a-name" class="font-bold text-lg"></h2><p id="a-email" class="text-xs opacity-60"></p></div>
+        <div class="text-right"><div class="flex items-center gap-1 text-secondary font-bold bg-secondary/10 px-2 py-1 rounded-full text-xs">⭐ <span id="a-pts">0</span> Pts</div></div>
+      </div>
+      <div><div class="flex justify-between items-center mb-2"><h3 class="font-headline text-base">Addresses</h3><button onclick="da()" class="text-xs font-bold text-secondary">+ Add</button></div><div id="a-addr" class="space-y-2"></div></div>
+      <div><h3 class="font-headline text-base mb-2">My Orders</h3><div id="a-orders" class="space-y-3"></div></div>
+      <div><h3 class="font-headline text-base mb-2">Subscriptions</h3><div id="a-subs" class="space-y-2"></div></div>
+      <button onclick="lo()" class="w-full border border-red-500/50 text-red-500 font-bold py-2.5 rounded-xl">Logout</button>
+    </div>
+  </main>
+</div>
+
+<!-- TRACKING -->
+<div id="page-tracking" data-page class="pb-24">
+  <header class="bg-surface/90 dark:bg-[#121212]/90 backdrop-blur-md sticky top-0 z-40 px-3 py-2.5 flex items-center gap-2 border-b border-black/5 dark:border-white/5"><button onclick="nav('account')" class="p-1.5 rounded-full"><span class="material-symbols-outlined">arrow_back</span></button><span class="font-headline text-base">Order Status</span></header>
+  <main class="max-w-lg mx-auto p-4 space-y-6">
+    <div class="bg-surface-container p-4 rounded-xl text-center"><h2 class="font-headline text-primary dark:text-primary-fixed text-lg" id="t-id"></h2><p id="t-eta" class="text-xs font-bold mt-1 opacity-70"></p></div>
+    <div id="t-timeline" class="space-y-0 pl-4 py-2 border-l-2 border-primary/20 dark:border-white/10 ml-4"></div>
+  </main>
+</div>
+
+<script>
+const S_KEY="lb_sid";
+let SID=localStorage.getItem(S_KEY); if(!SID){SID='s_'+Math.random().toString(36).substr(2,9);localStorage.setItem(S_KEY,SID)}
+const API=''; let cur='home', prev='home', CU=null, P=[], C=[], tip=30, slot="", lused=0;
+
+// System
+async function _f(path, opts={}){ return (await fetch(API+path,{credentials:'include',headers:{'Content-Type':'application/json','X-Session-Id':SID,'X-User-Id':CU?CU.id:''},...opts})).json(); }
+function N(id){ return document.getElementById(id); }
+function img(u,w){ return u+'=w'+w; }
+function msg(m){ const t=N('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+function nav(p, d=null){ prev=cur; cur=p; document.querySelectorAll('[data-page]').forEach(e=>e.classList.remove('active')); N('page-'+p).classList.add('active'); document.querySelectorAll('.nb').forEach(b=>{const a=b.dataset.n===p; b.classList.toggle('text-primary',a);b.classList.toggle('dark:text-primary-fixed',a);}); window.scrollTo(0,0); if(p==='home')lH(); if(p==='search')lS(); if(p==='cart')lC(); if(p==='account')lA(); if(p==='product')lP(d); if(p==='tracking')lT(d); }
+
+// UI Sync
+async function init(){
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+  const o = await _f('/api/auth/me'); if(o.user){ CU=o.user; syncD(); } else if(localStorage.getItem('lb_dark')) toggleDark(false);
+  nav('home'); lC(true);
+}
+function toggleDark(tog=true){
+  const d=document.documentElement; const isd=d.classList.contains('dark');
+  if(tog){ d.classList.toggle('dark'); localStorage.setItem('lb_dark',!isd); if(CU) _f('/api/auth/preferences',{method:'PUT',body:JSON.stringify({dark_mode:!isd?1:0})}) }
+  else if(localStorage.getItem('lb_dark')==='true') d.classList.add('dark');
+}
+function syncD(){ if(CU && CU.dark_mode) { document.documentElement.classList.add('dark'); localStorage.setItem('lb_dark','true'); } }
+
+// Auth
+function toggleAuth(){ N('auth-login-form').classList.toggle('hidden'); N('auth-signup-form').classList.toggle('hidden'); N('auth-title').textContent=N('auth-login-form').classList.contains('hidden')?'Sign Up':'Login'; N('auth-err').classList.add('hidden'); }
+function showAuth(m){ const l=m==='login'; N('auth-login-form').classList.toggle('hidden',!l); N('auth-signup-form').classList.toggle('hidden',l); N('auth-title').textContent=l?'Login':'Sign Up'; N('auth-err').classList.add('hidden'); N('auth-modal').showModal(); }
+async function doLogin(){
+  const res = await _f('/api/auth/login',{method:'POST',body:JSON.stringify({email:N('a-email').value,password:N('a-pass').value})});
+  if(res.error){ N('auth-err').textContent=res.error; N('auth-err').classList.remove('hidden'); return; }
+  CU=res.user; syncD(); msg('Welcome back!'); N('auth-modal').close(); lA(); lH();
+}
+async function doSignup(){
+  const res = await _f('/api/auth/signup',{method:'POST',body:JSON.stringify({name:N('s-name').value,email:N('s-email').value,password:N('s-pass').value})});
+  if(res.error){ N('auth-err').textContent=res.error; N('auth-err').classList.remove('hidden'); return; }
+  CU=res.user; syncD(); msg('Account created!'); N('auth-modal').close(); lA();
+}
+async function lo(){ await _f('/api/auth/logout',{method:'POST'}); CU=null; msg('Logged out'); lA(); lH(); }
+
+// Components
+function pct(p){
+  const oos=p.stock<1; const bd=p.badge?`<span class="absolute top-1 left-1 bg-secondary text-white text-[8px] px-1.5 py-0.5 rounded uppercase font-bold">${p.badge}</span>`:p.discount_pct?`<span class="absolute top-1 left-1 bg-red-600 text-white text-[8px] px-1.5 py-0.5 rounded uppercase font-bold">${p.discount_pct}% OFF</span>`:'';
+  return `<div class="bg-white dark:bg-[#1e1e1e] rounded-xl overflow-hidden border border-black/5 dark:border-white/5 shadow-sm ${oos?'oos':''}" onclick="nav('product','${p.product_id||p.id}')">
+    <div class="relative aspect-square"><img src="${img(p.img,300)}" class="w-full h-full object-cover" loading="lazy"/>${bd}</div>
+    <div class="p-2.5">
+      <h4 class="text-xs font-bold truncate">${p.name}</h4><p class="text-[9px] opacity-50 uppercase tracking-wider truncate mb-1.5">${p.farm}</p>
+      <div class="flex items-center justify-between"><div class="flex flex-col"><span class="text-primary dark:text-primary-fixed font-bold text-xs">₹${p.sale_price||p.price}<span class="text-[9px] font-normal opacity-50">/${p.unit}</span></span>${p.sale_price?`<span class="text-[9px] line-through opacity-50">₹${p.original_price}</span>`:''}</div>
+      ${oos?'':'<button onclick="event.stopPropagation(); aC(\''+(p.product_id||p.id)+'\')" class="w-6 h-6 rounded-full bg-primary/10 text-primary dark:bg-primary-fixed/20 dark:text-primary-fixed flex items-center justify-center"><span class="material-symbols-outlined text-[14px]">add</span></button>'}
+      </div>
+    </div></div>`;
+}
+
+// Home
+async function lH(){
+  N('hdr-skeleton').classList.remove('hidden'); N('hdr-content').classList.add('hidden');
+  const [deals, recs] = await Promise.all([_f('/api/deals'), _f('/api/recommendations')]);
+  N('flash-sales').innerHTML = deals.map(d=>`<div class="flex-shrink-0 w-40 cursor-pointer" onclick="nav('product','${d.product_id}')"><div class="relative h-24 rounded-xl overflow-hidden mb-1"><img src="${img(d.img,300)}" class="w-full h-full object-cover"/><div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div><div class="absolute bottom-2 left-2 text-white"><p class="text-[9px] font-bold text-red-400">⚡ FLASH SALE</p><p class="text-xs font-bold leading-tight">${d.name}</p><p class="text-xs">₹${d.sale_price} <s class="text-[9px] opacity-70">₹${d.original_price}</s></p></div></div></div>`).join('');
+  N('home-recs').innerHTML = recs.map(pct).join('');
+  const cs=['vegetables','fruits','dairy','bakery','spices','meat','snacks']; const ci={'vegetables':'🥦','fruits':'🍎','dairy':'🥛','bakery':'🍞','spices':'🌶️','meat':'🥩','snacks':'🥜'};
+  N('home-cats').innerHTML = cs.map(c=>`<div class="flex flex-col items-center gap-1 cursor-pointer" onclick="rc='${c}';N('si').value='';nav('search')"><div class="w-14 h-14 bg-surface-container rounded-full flex items-center justify-center text-2xl">${ci[c]}</div><span class="text-[10px] uppercase font-bold opacity-60">${c}</span></div>`).join('');
+  if(CU){ const as=await _f('/api/addresses'); const ad=as.find(a=>a.is_default)||as[0]; N('hdr-addr').innerHTML = ad?`${ad.label} <span class="material-symbols-outlined text-[10px]">expand_more</span>`:'Select Address+'; }
+  else N('hdr-addr').innerHTML = `Select Address <span class="material-symbols-outlined text-[10px]">expand_more</span>`;
+  N('hdr-skeleton').classList.add('hidden'); N('hdr-content').classList.remove('hidden');
+}
+
+// Search
+let rc="";
+async function lS(){
+  if(!P.length) P=await _f('/api/products');
+  const cs=['all','vegetables','fruits','dairy','bakery','spices','meat','snacks'];
+  N('search-cats').innerHTML=cs.map(c=>`<button onclick="rc='${c==='all'?'':c}'; lS()" class="px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${rc===(c==='all'?'':c)?'bg-primary text-white border-primary':'border-black/10 dark:border-white/10 opacity-60'}">${c.toUpperCase()}</button>`).join('');
+  doSearch();
+}
+async function doSearch(){
+  const q=N('si').value.trim();
+  let ps=P; if(rc) ps=ps.filter(x=>x.category===rc);
+  if(q){ const r=await _f('/api/search?q='+encodeURIComponent(q)); const rids=r.map(x=>x.id); ps=ps.filter(x=>rids.includes(x.id)); }
+  N('sr').innerHTML = ps.length?ps.map(pct).join(''):'<div class="col-span-full py-12 text-center opacity-40">No items found</div>';
+}
+
+// Product
+async function lP(pid){
+  N('pd-skeleton').classList.remove('hidden'); N('pd').classList.add('hidden');
+  const [p, recs] = await Promise.all([_f('/api/products/'+pid), _f('/api/recommendations?product_id='+pid)]);
+  const revs=p.reviews||[];
+  N('pd').innerHTML = `
+    <div class="relative aspect-square rounded-2xl overflow-hidden"><img src="${img(p.img,500)}" class="w-full h-full object-cover"/>${p.badge?`<span class="absolute top-3 left-3 bg-secondary text-white text-[10px] px-2 py-1 rounded-lg uppercase font-bold">${p.badge}</span>`:''}${!p.inStock?'<span class="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center text-red-600 font-bold text-xl">Out of Stock</span>':''}</div>
+    <div><div class="flex justify-between items-start"><h1 class="text-2xl font-headline font-bold leading-tight">${p.name}</h1><button class="text-secondary bg-secondary/10 px-2 py-1 rounded flex items-center gap-1 text-xs font-bold">⭐ ${p.rating}</button></div><p class="text-[10px] uppercase tracking-widest opacity-50 mt-1">${p.farm} · ${p.unit}</p></div>
+    <div class="flex items-center justify-between bg-surface-container p-3 rounded-xl"><span class="text-3xl font-primary font-bold text-primary dark:text-primary-fixed">₹${p.price}</span><button onclick="aC('${p.id}')" class="bg-primary text-white px-6 py-2.5 rounded-xl font-bold ${!p.inStock?'opacity-50 pointer-events-none':''}">Add to Basket</button></div>
+    <p class="text-sm opacity-80 leading-relaxed">${p.description}</p>
+    ${recs.length?`<div class="pt-4 border-t border-black/5 dark:border-white/5"><h3 class="font-headline font-bold mb-3">Often bought together</h3><div class="flex overflow-x-auto gap-3 hide-scrollbar -mx-3 px-3">${recs.map(r=>`<div class="flex-shrink-0 w-32 cursor-pointer" onclick="nav('product','${r.id}')"><img src="${img(r.img,200)}" class="w-full aspect-square rounded-xl object-cover mb-1"/><p class="text-xs font-bold truncate">${r.name}</p><p class="text-xs opacity-60">₹${r.price}</p></div>`).join('')}</div></div>`:''}
+    <div class="pt-4 border-t border-black/5 dark:border-white/5"><div class="flex justify-between items-center mb-3"><h3 class="font-headline font-bold">Reviews (${revs.length})</h3></div>${revs.length?revs.slice(0,3).map(r=>`<div class="mb-3 bg-surface-container rounded-lg p-3"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold">${r.user_name}</span><span class="text-[10px] text-yellow-500">⭐ ${r.rating}</span></div><p class="text-xs opacity-80">${r.comment||'Verified Purchase'}</p></div>`).join(''):'<p class="text-xs opacity-50">No reviews yet.</p>'}</div>
+  `;
+  N('pd-skeleton').classList.add('hidden'); N('pd').classList.remove('hidden');
+}
+
+// Cart
+async function lC(silent=false){
+  const res=await _f('/api/cart'); C=res.items||[]; const B=N('cb'); B.textContent=res.itemCount; B.classList.toggle('hidden',res.itemCount===0);
+  if(!silent){
+    N('cb').classList.add('badge-bounce'); setTimeout(()=>N('cb').classList.remove('badge-bounce'),300);
+    N('ce').classList.toggle('hidden',C.length>0); N('cs').classList.toggle('hidden',C.length===0); N('cl').textContent=`${C.length} Items`;
+    N('ci').innerHTML=C.map(i=>`<div class="flex gap-3 bg-surface-container rounded-xl p-2 items-center"><img src="${img(i.img,150)}" class="w-16 h-16 rounded-lg object-cover"/><div class="flex-1 min-w-0"><h3 class="text-sm font-bold truncate">${i.name}</h3><p class="text-[10px] opacity-60 mb-1">${i.unit} · ₹${i.price}</p><div class="flex items-center gap-2"><div class="flex bg-white dark:bg-[#121212] rounded-lg items-center text-xs"><button onclick="uC('${i.product_id}',${i.qty-1})" class="px-2 py-1">-</button><span class="font-bold w-4 text-center">${i.qty}</span><button onclick="uC('${i.product_id}',${i.qty+1})" class="px-2 py-1">+</button></div></div></div><div class="text-right pr-2"><div class="font-bold text-sm">₹${i.qty*i.price}</div></div></div>`).join('');
+    // Slots & Address
+    if(CU){
+      const [as,ss]=await Promise.all([_f('/api/addresses'),_f('/api/delivery-slots')]); 
+      const ad=as.find(a=>a.is_default)||as[0]; if(ad)N('cart-addr-txt').textContent=ad.label+': '+ad.full_address;
+      N('cart-slots').innerHTML=ss.map((s,i)=>`<div class="flex-shrink-0 border-2 rounded-xl p-2 cursor-pointer w-28 text-center ${slot===s.id||(i===0&&!slot)?'border-primary bg-primary/5':'border-transparent bg-surface-container'}" onclick="slot='${s.id}';lC()"><div class="text-[10px] font-bold uppercase opacity-60">${s.day}</div><div class="text-xs font-bold py-1">${s.time}</div><div class="text-[9px] ${s.fee===0?'text-green-600 font-bold':'opacity-50'}">${s.fee===0?'FREE':'₹'+s.fee}</div></div>`).join('');
+      if(!slot) slot=ss[0].id;
+    }
+    // Math
+    const sub=res.total; const dfee=C.length?40:0; const dsc=Math.round(sub*0.05); const mlo=CU?Math.min(CU.loyalty_points,Math.floor(sub*0.1)):0; lused=mlo;
+    const tot=Math.max(0,sub+dfee+tip-dsc-lused);
+    N('os').innerHTML=`<div class="flex justify-between"><span>Subtotal</span><span>₹${sub}</span></div><div class="flex justify-between"><span>Delivery</span><span>₹${dfee}</span></div><div class="flex justify-between"><span>Tip (Support Rider)</span><div><button onclick="tip=10;lC()" class="px-2 border rounded ${tip===10?'bg-primary text-white':''}">10</button><button onclick="tip=30;lC()" class="px-2 border rounded ml-1 ${tip===30?'bg-primary text-white':''}">30</button><button onclick="tip=50;lC()" class="px-2 border rounded ml-1 ${tip===50?'bg-primary text-white':''}">50</button></div></div><div class="flex justify-between text-green-600 font-bold"><span>Basket Pass Discount</span><span>-₹${dsc}</span></div>`;
+    N('oloyalty').innerHTML=CU&&CU.loyalty_points>0?`<span class="text-xs text-secondary">Using ${lused} Loyalty Points (Max 10%)</span><span class="text-xs text-secondary">-₹${lused}</span>`:'';
+    N('ot').textContent='₹'+tot;
+  }
+}
+async function aC(pid){ await _f('/api/cart',{method:'POST',body:JSON.stringify({productId:pid,qty:1})}); lC(true); msg('Added to Basket!'); }
+async function uC(pid,q){ if(q<1)await _f('/api/cart/'+pid,{method:'DELETE'}); else await _f('/api/cart/'+pid,{method:'PUT',body:JSON.stringify({qty:q})}); lC(); }
+async function po(){
+  if(!CU){ showAuth('login'); return; }
+  const res=await _f('/api/orders',{method:'POST',body:JSON.stringify({delivery:'express',slot,tip,loyalty_used:lused})});
+  if(res.error){ msg(res.error); return; } msg('Order Placed! 🎉'); lC(true); nav('tracking',res.order.id);
+}
+
+// Account
+async function lA(){
+  if(!CU){ N('acc-guest').classList.remove('hidden'); N('acc-user').classList.add('hidden'); return; }
+  N('acc-guest').classList.add('hidden'); N('acc-user').classList.remove('hidden');
+  N('a-name').textContent=CU.name; N('a-email').textContent=CU.email; N('a-pts').textContent=CU.loyalty_points;
+  const as=await _f('/api/addresses'); N('a-addr').innerHTML=as.length?as.map(a=>`<div class="bg-surface-container rounded-lg p-3 text-xs flex justify-between"><div><span class="font-bold">${a.label}</span><p class="opacity-70 mt-1">${a.full_address}</p></div><button onclick="_f('/api/addresses/${a.id}',{method:'DELETE'}).then(lA)" class="opacity-50"><span class="material-symbols-outlined text-sm">delete</span></button></div>`).join(''):'<p class="text-xs opacity-50">No addresses</p>';
+  const os=await _f('/api/orders'); N('a-orders').innerHTML=os.length?os.slice(0,5).map(o=>`<div class="bg-surface-container rounded-lg p-3 cursor-pointer" onclick="nav('tracking','${o.id}')"><div class="flex justify-between items-center mb-1"><span class="font-mono text-xs font-bold leading-none">#${o.id}</span><span class="text-[9px] bg-primary/10 text-primary dark:text-primary-fixed px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">${o.status}</span></div><p class="text-[10px] opacity-50 truncate">${o.items.map(i=>i.product_name).join(', ')}</p><p class="text-right text-xs font-bold mt-1">₹${o.grand_total}</p></div>`).join(''):'<p class="text-xs opacity-50">No orders</p>';
+  const bs=await _f('/api/sub-boxes'); N('a-subs').innerHTML=bs.length?bs.map(b=>`<div class="bg-[#2d5016]/10 border border-[#2d5016]/20 p-3 rounded-xl flex justify-between items-center"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary dark:text-primary-fixed">local_florist</span><div><p class="text-xs font-bold uppercase">${b.box_type} Box</p><p class="text-[10px] opacity-70">Next: ${b.next_delivery}</p></div></div><button class="bg-[#2d5016] text-white text-[10px] font-bold px-3 py-1.5 rounded-full">Manage</button></div>`).join(''):`<div class="bg-surface-container p-4 rounded-xl text-center"><p class="text-xs mb-2">Weekly Farm Boxes starting at ₹499</p><button onclick="_f('/api/sub-boxes',{method:'POST',body:JSON.stringify({box_type:'veggie'})}).then(()=>{msg('Subscribed!');lA()})" class="text-xs bg-primary text-white font-bold px-4 py-1.5 rounded-full">Subscribe Now</button></div>`;
+}
+function da(){ 
+  const prompt = window.prompt("Enter new address label and details (e.g., Home: 123 Main St)");
+  if(prompt && prompt.includes(':')){ const p=prompt.split(':'); _f('/api/addresses',{method:'POST',body:JSON.stringify({label:p[0].trim(),full_address:p[1].trim(),is_default:1})}).then(lA); }
+}
+
+// Tracking
+let ev=null;
+async function lT(oid){
+  if(ev){ ev.close(); ev=null; }
+  const o=await _f('/api/orders/'+oid); if(!o || o.error) return;
+  N('t-id').textContent="Order #"+o.id; N('t-eta').textContent=o.status==='Delivered'?'Delivered Successfully!':'Arriving in '+(o.eta||'25-30 mins');
+  const sts=['Confirmed','Preparing','Packed','Out for Delivery','Delivered']; const ics=['check_circle','restaurant','inventory_2','local_shipping','home'];
+  const curIdx=sts.indexOf(o.status);
+  N('t-timeline').innerHTML=sts.map((s,i)=>{
+    const d=i<=curIdx; return `<div class="relative pl-6 pb-6 track-step ${d?'done':''}"><div class="absolute -left-9 bg-surface dark:bg-[#121212] py-2"><div class="track-dot w-8 h-8 rounded-full ${d?'bg-primary':'bg-surface-container border'} flex items-center justify-center z-10 shadow-sm"><span class="material-symbols-outlined text-[16px] text-${d?'white':'black/30'}" style="font-variation-settings:'FILL' ${d?1:0}">${ics[i]}</span></div></div><div><p class="text-sm font-bold ${d?'':'opacity-40'}">${s}</p><p class="text-[10px] opacity-50">${i===curIdx?'In progress...':d?'Completed':''}</p></div></div>`;
+  }).join('');
+  if(o.status!=='Delivered'){
+    ev=new EventSource('/api/orders/'+oid+'/track');
+    ev.onmessage=e=>{const d=JSON.parse(e.data);if(d.status){lT(oid);if(d.status==='Delivered')ev.close()}};
+  }
+}
+
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
