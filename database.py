@@ -394,7 +394,7 @@ def seed_db():
         # Admin user
         aid = uid()
         db.execute("INSERT INTO users (id,email,password_hash,name,phone,is_admin,loyalty_points) VALUES (?,?,?,?,?,?,?)",
-                   (aid, "admin@localbasket.com", hash_pw("admin123"), "Admin", "9999999999", 1, 500))
+                   (aid, "admin@localbasket.com", hash_pw("SecureBasket@2026!"), "Admin", "9999999999", 1, 500))
         # Flash sales
         db.execute("INSERT INTO flash_sales (id,product_id,discount_pct,sale_price,starts_at,ends_at) VALUES (?,?,?,?,datetime('now'),datetime('now','+1 day'))", ("fs1","p8",30,112))
         db.execute("INSERT INTO flash_sales (id,product_id,discount_pct,sale_price,starts_at,ends_at) VALUES (?,?,?,?,datetime('now'),datetime('now','+1 day'))", ("fs2","p7",30,595))
@@ -407,7 +407,7 @@ def seed_db():
                 db.execute("INSERT INTO reviews (id,product_id,user_name,rating,comment) VALUES (?,?,?,?,?)",
                            (uid(), pid, names[i%4], random.randint(4,5), comments[i%4]))
         print("  ✅ DB seeded: 30 products, admin, flash sales, reviews")
-        print("     Admin: admin@localbasket.com / admin123")
+        print("     Admin: admin@localbasket.com / SecureBasket@2026!")
 
 if __name__ == "__main__":
     init_db(); seed_db(); print("Database ready!")
