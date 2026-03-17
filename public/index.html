@@ -91,7 +91,11 @@ dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
     <!-- Hero & Flash Sales -->
     <div id="hdr-skeleton" class="w-full h-40 rounded-xl skeleton"></div>
     <div id="hdr-content" class="hidden space-y-4">
-      <section class="flex justify-between items-end"><h1 class="font-headline text-2xl sm:text-3xl">Fresh from<br/><span class="italic">Morning Harvest</span></h1></section>
+      <section class="flex flex-col gap-2 p-6 rounded-2xl bg-gradient-to-br from-primary to-[#2a5c05] text-white shadow-xl relative overflow-hidden mt-2">
+        <div class="absolute -right-10 -top-10 w-40 h-40 bg-white opacity-10 rounded-full blur-xl"></div>
+        <h1 class="font-headline text-3xl sm:text-4xl font-black tracking-tight leading-tight z-10">Fresh from<br/>Morning Harvest</h1>
+        <p class="text-xs opacity-90 z-10 max-w-[200px]">The best local organic produce, groceries, and daily essentials delivered instantly.</p>
+      </section>
       <section id="flash-sales" class="flex overflow-x-auto gap-3 hide-scrollbar -mx-3 px-3"></section>
     </div>
     <!-- Catchy Categories -->
@@ -309,6 +313,13 @@ async function lC(silent=false){
 }
 async function aC(pid){ await _f('/api/cart',{method:'POST',body:JSON.stringify({productId:pid,qty:1})}); lC(true); msg('Added to Basket!'); }
 async function uC(pid,q){ if(q<1)await _f('/api/cart/'+pid,{method:'DELETE'}); else await _f('/api/cart/'+pid,{method:'PUT',body:JSON.stringify({qty:q})}); lC(); }
+async function cancelSub(id){
+  if(!confirm("Cancel this subscription?")) return;
+  await _f('/api/sub-boxes/'+id,{method:'DELETE'});
+  msg("Subscription cancelled.");
+  lA();
+}
+
 async function po(){
   if(!CU){ showAuth('login'); return; }
   const res=await _f('/api/orders',{method:'POST',body:JSON.stringify({delivery:'express',slot,tip,loyalty_used:lused})});
@@ -322,11 +333,16 @@ async function lA(){
   N('a-name').textContent=CU.name; N('a-email').textContent=CU.email; N('a-pts').textContent=CU.loyalty_points;
   const as=await _f('/api/addresses'); N('a-addr').innerHTML=as.length?as.map(a=>`<div class="bg-surface-container rounded-lg p-3 text-xs flex justify-between"><div><span class="font-bold">${a.label}</span><p class="opacity-70 mt-1">${a.full_address}</p></div><button onclick="_f('/api/addresses/${a.id}',{method:'DELETE'}).then(lA)" class="opacity-50"><span class="material-symbols-outlined text-sm">delete</span></button></div>`).join(''):'<p class="text-xs opacity-50">No addresses</p>';
   const os=await _f('/api/orders'); N('a-orders').innerHTML=os.length?os.slice(0,5).map(o=>`<div class="bg-surface-container rounded-lg p-3 cursor-pointer" onclick="nav('tracking','${o.id}')"><div class="flex justify-between items-center mb-1"><span class="font-mono text-xs font-bold leading-none">#${o.id}</span><span class="text-[9px] bg-primary/10 text-primary dark:text-primary-fixed px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">${o.status}</span></div><p class="text-[10px] opacity-50 truncate">${o.items.map(i=>i.product_name).join(', ')}</p><p class="text-right text-xs font-bold mt-1">₹${o.grand_total}</p></div>`).join(''):'<p class="text-xs opacity-50">No orders</p>';
-  const bs=await _f('/api/sub-boxes'); N('a-subs').innerHTML=bs.length?bs.map(b=>`<div class="bg-[#2d5016]/10 border border-[#2d5016]/20 p-3 rounded-xl flex justify-between items-center"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary dark:text-primary-fixed">local_florist</span><div><p class="text-xs font-bold uppercase">${b.box_type} Box</p><p class="text-[10px] opacity-70">Next: ${b.next_delivery}</p></div></div><button class="bg-[#2d5016] text-white text-[10px] font-bold px-3 py-1.5 rounded-full">Manage</button></div>`).join(''):`<div class="bg-surface-container p-4 rounded-xl text-center"><p class="text-xs mb-2">Weekly Farm Boxes starting at ₹499</p><button onclick="_f('/api/sub-boxes',{method:'POST',body:JSON.stringify({box_type:'veggie'})}).then(()=>{msg('Subscribed!');lA()})" class="text-xs bg-primary text-white font-bold px-4 py-1.5 rounded-full">Subscribe Now</button></div>`;
+  const bs=await _f('/api/sub-boxes'); N('a-subs').innerHTML=bs.length?bs.map(b=>`<div class="bg-[#2d5016]/10 border border-[#2d5016]/20 p-3 rounded-xl flex justify-between items-center"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary dark:text-primary-fixed">local_florist</span><div><p class="text-xs font-bold uppercase">${b.box_type} Box</p><p class="text-[10px] opacity-70">Next: ${b.next_delivery}</p></div></div><button onclick="cancelSub('${b.id}')" class="bg-[#2d5016] text-white hover:bg-red-600 transition-colors text-[10px] font-bold px-3 py-1.5 rounded-full">Manage</button></div>`).join(''):`<div class="bg-surface-container p-4 rounded-xl text-center"><p class="text-xs mb-2">Weekly Farm Boxes starting at ₹499</p><button onclick="_f('/api/sub-boxes',{method:'POST',body:JSON.stringify({box_type:'veggie'})}).then(()=>{msg('Subscribed!');lA()})" class="text-xs bg-primary text-white font-bold px-4 py-1.5 rounded-full">Subscribe Now</button></div>`;
 }
 function da(){ 
   const prompt = window.prompt("Enter new address label and details (e.g., Home: 123 Main St)");
-  if(prompt && prompt.includes(':')){ const p=prompt.split(':'); _f('/api/addresses',{method:'POST',body:JSON.stringify({label:p[0].trim(),full_address:p[1].trim(),is_default:1})}).then(lA); }
+  if(prompt && prompt.includes(':')){ 
+    const p=prompt.split(':'); 
+    _f('/api/addresses',{method:'POST',body:JSON.stringify({label:p[0].trim(),full_address:p[1].trim(),is_default:1})}).then(()=>{msg('Address added!'); lA();}); 
+  } else if(prompt) {
+    alert("Please format as 'Label: Address' (e.g. Work: 456 Tech Park)");
+  }
 }
 
 // Tracking

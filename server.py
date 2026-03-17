@@ -187,7 +187,8 @@ def track_sse(oid):
 
 def _sim_order(oid):
     def _r():
-        for st, dl in [("Confirmed",0),("Preparing",8),("Packed",15),("Out for Delivery",20),("Delivered",30)]:
+        time.sleep(2)
+        for st, dl in [("Confirmed",2),("Preparing",8),("Packed",15),("Out for Delivery",30),("Delivered",45)]:
             time.sleep(dl); db.update_order_status(oid, st)
             if oid in order_watchers: order_watchers[oid].append(st)
     threading.Thread(target=_r, daemon=True).start()
