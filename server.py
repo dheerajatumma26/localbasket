@@ -6,7 +6,7 @@ Features: SQLite+FTS5, Auth, Admin, SSE Tracking, Reviews, Loyalty, Flash Sales,
 from flask import Flask, jsonify, request, send_from_directory, session, Response
 from flask_cors import CORS
 import database as db
-import json, time, threading, requests, hashlib
+import json, time, threading, requests, hashlib, os
 
 def upload_to_cloudinary(base64_img):
     cloud_name, api_key, api_secret = "dfedwdajz", "699479815565524", "CF77WLVmSBIh3ztBVHnCk13-j6I"
@@ -309,4 +309,5 @@ if __name__ == "__main__":
     print("    Customer: http://localhost:5000")
     print("    Admin:    http://localhost:5000/admin")
     print("    Admin:    admin@localbasket.com / admin123\n")
-    app.run(debug=True, port=5000, use_reloader=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, use_reloader=False)
