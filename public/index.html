@@ -239,10 +239,11 @@ dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
 <script>
 const S_KEY="lb_sid";
 let SID=localStorage.getItem(S_KEY); if(!SID){SID='s_'+Math.random().toString(36).substr(2,9);localStorage.setItem(S_KEY,SID)}
-const API=''; let cur='home', prev='home', CU=null, P=[], C=[], tip=30, slot="", lused=0, pm="UPI";
+const API=''; let cur='home', prev='home', CU=null, P=[], C=[], tip=30, slot="", lused=0, pm="UPI", lastN={};
 
 // System
 async function _f(path, opts={}){ return (await fetch(API+path,{credentials:'include',headers:{'Content-Type':'application/json','X-Session-Id':SID,'X-User-Id':CU?CU.id:''},...opts})).json(); }
+
 function N(id){ return document.getElementById(id); }
 function img(u,w){ return u+'=w'+w; }
 function msg(m){ const t=N('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
@@ -254,6 +255,28 @@ async function init(){
   const o = await _f('/api/auth/me'); if(o.user){ CU=o.user; syncD(); } else if(localStorage.getItem('lb_dark')) toggleDark(false);
   nav('home'); lC(true);
   if(window.location.hash.startsWith('#reset=')) showAuth('reset');
+  setInterval(chkN, 15000);
+}
+
+async function chkN(){
+  if(!CU) return;
+  const ns = await _f('/api/notifications');
+  (ns||[]).forEach(n => {
+    if(lastN[n.id] && lastN[n.id] !== n.status) {
+      msg(`Order #${n.id.slice(0,6)} is now ${n.status}! 🚀`);
+      if(window.Notification && Notification.permission === 'granted') {
+          new Notification('Local Basket Update', {body: `Order #${n.id.slice(0,6)} is ${n.status}`});
+      }
+      if(cur==='tracking') lT(n.id);
+    }
+    lastN[n.id] = n.status;
+  });
+}
+
+function initNotifs(){
+    if(window.Notification && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
 }
 function toggleDark(tog=true){
   const d=document.documentElement; const isd=d.classList.contains('dark');
@@ -471,6 +494,7 @@ async function cancelSub(id){
 
 async function po(){
   if(!CU){ showAuth('login'); return; }
+  initNotifs();
   const btn = document.querySelector('button[onclick="po()"]');
   if(btn) { btn.disabled = true; btn.innerHTML = 'Placing... <span class="material-symbols-outlined skeleton rounded-full w-4 h-4"></span>'; }
   try {

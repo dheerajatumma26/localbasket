@@ -130,6 +130,55 @@ def prefs():
     db.update_user_pref(u["id"], **{k:v for k,v in request.get_json().items() if k in ("dark_mode","name","phone")})
     return jsonify({"success":True})
 
+# ─── Admin Tools ───────────────────────────────────────────────
+@app.route("/api/admin/products", methods=["PATCH"])
+def admin_update_product():
+    if not session.get("user_id"): return jsonify({"error":"Unauthorized"}), 401
+    with db.get_db() as conn:
+        u = conn.execute("SELECT is_admin FROM users WHERE id=?", (session["user_id"],)).fetchone()
+        if not u or not u["is_admin"]: return jsonify({"error":"Forbidden"}), 403
+        d = request.get_json()
+        pid = d.get("id")
+        if not pid: return jsonify({"error":"Product ID required"}), 400
+        upd = {}
+        if "price" in d: upd["price"] = d["price"]
+        if "is_active" in d: upd["is_active"] = 1 if d["is_active"] else 0
+        if "stock" in d: upd["stock"] = d["stock"]
+        if not upd: return jsonify({"error":"No updates provided"}), 400
+        
+        set_sql = ", ".join([f"{k}=?" for k in upd.keys()])
+        conn.execute(f"UPDATE products SET {set_sql} WHERE id=?", list(upd.values()) + [pid])
+    return jsonify({"success":True})
+
+# ─── Rider Dashboard ───────────────────────────────────────────
+@app.route("/api/rider/orders")
+def get_rider_orders():
+    # In a real app, check rider role. Here, we allow if logged in.
+    if not session.get("user_id"): return jsonify({"error":"Unauthorized"}), 401
+    with db.get_db() as conn:
+        orders = db.drs(conn.execute("SELECT * FROM orders WHERE status IN ('Confirmed', 'Out for Delivery') ORDER BY created_at DESC").fetchall())
+    return jsonify(orders)
+
+@app.route("/api/rider/orders/<oid>/status", methods=["POST"])
+def update_order_status(oid):
+    if not session.get("user_id"): return jsonify({"error":"Unauthorized"}), 401
+    status = request.get_json().get("status")
+    if status not in ("Out for Delivery", "Delivered", "Cancelled"):
+        return jsonify({"error":"Invalid status"}), 400
+    with db.get_db() as conn:
+        conn.execute("UPDATE orders SET status=? WHERE id=?", (status, oid))
+    return jsonify({"success":True})
+
+# ─── Notifications ─────────────────────────────────────────────
+@app.route("/api/notifications")
+def get_notifications():
+    uid = session.get("user_id")
+    if not uid: return jsonify([])
+    with db.get_db() as conn:
+        # Check for recent status changes in last 1 hour
+        orders = db.drs(conn.execute("SELECT id, status FROM orders WHERE user_id=? AND created_at > datetime('now','-1 hour') ORDER BY created_at DESC", (uid,)).fetchall())
+    return jsonify(orders)
+
 # ─── Home Dashboard ────────────────────────────────────────────
 @app.route("/api/home")
 def get_home():

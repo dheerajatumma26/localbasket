@@ -78,13 +78,12 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
       <div id="orders-list" class="space-y-3"></div>
     </div>
 
-    <!-- Inventory -->
     <div id="tab-inventory" class="tab-content hidden">
-      <h2 class="text-xl font-bold mb-4">Inventory</h2>
+      <h2 class="text-xl font-bold mb-4 text-[#173901]">Quick Stock & Price Manager</h2>
       <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
         <table class="w-full text-sm">
           <thead class="bg-gray-50 text-left text-xs font-bold uppercase text-gray-500">
-            <tr><th class="px-4 py-3">Product</th><th class="px-4 py-3">Stock</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Update</th></tr>
+            <tr><th class="px-4 py-3">Product</th><th class="px-4 py-3">Price (₹)</th><th class="px-4 py-3">Stock</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Action</th></tr>
           </thead>
           <tbody id="inv-tbody"></tbody>
         </table>
@@ -266,19 +265,31 @@ async function updateStatus(id,s){await F('/api/admin/orders/'+id+'/status',{met
 // Inventory
 async function loadInventory(){
   const prods=await F('/api/admin/products');
-  document.getElementById('inv-tbody').innerHTML=prods.filter(p=>p.is_active).map(p=>`
-    <tr class="border-t hover:bg-gray-50">
-      <td class="px-4 py-3 text-xs font-medium">${p.name}</td>
-      <td class="px-4 py-3"><input type="number" value="${p.stock}" min="0" class="w-20 px-2 py-1 border rounded text-xs text-center" id="inv-${p.id}"/></td>
-      <td class="px-4 py-3 text-xs">${p.stock===0?'<span class="text-red-600 font-bold">OUT OF STOCK</span>':p.stock<20?'<span class="text-orange-600 font-bold">LOW</span>':'<span class="text-green-600">OK</span>'}</td>
-      <td class="px-4 py-3"><button onclick="updateInv('${p.id}')" class="bg-[#173901] text-white px-3 py-1 rounded text-[10px] font-bold">Update</button></td>
+  document.getElementById('inv-tbody').innerHTML=prods.map(p=>`
+    <tr class="border-t hover:bg-gray-50 ${p.is_active?'':'opacity-50'}">
+      <td class="px-4 py-3 flex items-center gap-2">
+        <img src="${p.img}" class="w-6 h-6 rounded object-cover"/>
+        <span class="text-xs font-medium">${p.name}</span>
+      </td>
+      <td class="px-4 py-3"><input type="number" value="${p.price}" class="w-20 px-2 py-1 border rounded text-xs" id="inv-pr-${p.id}"/></td>
+      <td class="px-4 py-3"><input type="number" value="${p.stock}" class="w-20 px-2 py-1 border rounded text-xs" id="inv-st-${p.id}"/></td>
+      <td class="px-4 py-3">
+        <button onclick="toggleActive('${p.id}', ${!p.is_active})" class="px-3 py-1 rounded-full text-[10px] font-bold ${p.is_active?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${p.is_active?'Active':'Hidden'}</button>
+      </td>
+      <td class="px-4 py-3"><button onclick="updateInv('${p.id}')" class="bg-[#173901] text-white px-3 py-1 rounded text-[10px] font-bold shadow-sm">Save</button></td>
     </tr>`).join('');
 }
 
+async function toggleActive(id, act){
+  await F('/api/admin/products',{method:'PATCH',body:JSON.stringify({id, is_active:act})});
+  loadInventory();
+}
+
 async function updateInv(id){
-  const val=parseInt(document.getElementById('inv-'+id).value);
-  await F('/api/admin/products/'+id,{method:'PUT',body:JSON.stringify({stock:val})});
-  loadInventory();loadDashboard();
+  const price=parseFloat(document.getElementById('inv-pr-'+id).value);
+  const stock=parseInt(document.getElementById('inv-st-'+id).value);
+  await F('/api/admin/products',{method:'PATCH',body:JSON.stringify({id, price, stock})});
+  loadInventory();
 }
 </script>
 </body>
