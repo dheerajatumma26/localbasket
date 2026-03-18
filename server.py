@@ -427,6 +427,8 @@ def admin_status(oid):
 def idx(): return send_from_directory(app.static_folder, "index.html")
 @app.route("/admin")
 def adm(): return send_from_directory(app.static_folder, "admin.html")
+@app.route("/rider")
+def rdr(): return send_from_directory(app.static_folder, "rider.html")
 @app.errorhandler(404)
 def nf(e):
     if not request.path.startswith("/api"): return send_from_directory(app.static_folder, "index.html")
@@ -436,6 +438,7 @@ if __name__ == "__main__":
     print("\n[Local Basket] Premium Server")
     print("    Customer: http://localhost:5000")
     print("    Admin:    http://localhost:5000/admin")
-    print("    Admin:    admin@localbasket.com / admin123\n")
+    print("    Rider:    http://localhost:5000/rider")
+    print("    Admin/Rider: admin@localbasket.com / admin123\n")
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, use_reloader=False)
