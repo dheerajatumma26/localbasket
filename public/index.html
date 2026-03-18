@@ -9,6 +9,8 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 tailwind.config={darkMode:"class",theme:{extend:{colors:{
   "primary":"#173901","secondary":"#954a00",
@@ -51,17 +53,40 @@ dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
     <div id="auth-login-form" class="space-y-3">
       <input id="a-email" type="email" placeholder="Email" class="w-full px-4 py-2 border rounded-lg text-sm"/>
       <input id="a-pass" type="password" placeholder="Password" class="w-full px-4 py-2 border rounded-lg text-sm"/>
+      <div class="flex justify-end"><a href="#" onclick="showAuth('forgot')" class="text-[10px] text-secondary font-bold">Forgot Password?</a></div>
       <button onclick="doLogin()" class="w-full bg-primary text-white py-2 rounded-lg font-bold">Login</button>
-      <p class="text-xs text-center text-gray-500">No account? <a href="#" onclick="toggleAuth()" class="text-secondary font-bold">Sign up</a></p>
+      <p class="text-xs text-center text-gray-500">No account? <a href="#" onclick="showAuth('signup')" class="text-secondary font-bold">Sign up</a></p>
     </div>
     <div id="auth-signup-form" class="hidden space-y-3">
       <input id="s-name" type="text" placeholder="Full Name" class="w-full px-4 py-2 border rounded-lg text-sm"/>
       <input id="s-email" type="email" placeholder="Email" class="w-full px-4 py-2 border rounded-lg text-sm"/>
       <input id="s-pass" type="password" placeholder="Password" class="w-full px-4 py-2 border rounded-lg text-sm"/>
       <button onclick="doSignup()" class="w-full bg-primary text-white py-2 rounded-lg font-bold">Sign Up</button>
-      <p class="text-xs text-center text-gray-500">Have an account? <a href="#" onclick="toggleAuth()" class="text-secondary font-bold">Login</a></p>
+      <p class="text-xs text-center text-gray-500">Have an account? <a href="#" onclick="showAuth('login')" class="text-secondary font-bold">Login</a></p>
+    </div>
+    <div id="auth-forgot-form" class="hidden space-y-3">
+      <p class="text-xs text-center opacity-70 mb-2">Enter your email for a reset link.</p>
+      <input id="f-email" type="email" placeholder="Email" class="w-full px-4 py-2 border rounded-lg text-sm"/>
+      <button onclick="doForgot()" class="w-full bg-primary text-white py-2 rounded-lg font-bold">Send Link</button>
+      <p class="text-xs text-center text-gray-500"><a href="#" onclick="showAuth('login')" class="text-secondary font-bold">Back to Login</a></p>
+    </div>
+    <div id="auth-reset-form" class="hidden space-y-3">
+      <p class="text-xs text-center opacity-70 mb-2">Enter your new password.</p>
+      <input id="r-pass" type="password" placeholder="New Password" class="w-full px-4 py-2 border rounded-lg text-sm"/>
+      <button onclick="doReset()" class="w-full bg-primary text-white py-2 rounded-lg font-bold">Update Password</button>
     </div>
     <p id="auth-err" class="text-red-500 text-xs text-center hidden"></p>
+  </div>
+</dialog>
+
+<!-- Map Modal -->
+<dialog id="map-modal" class="rounded-xl w-full max-w-md shadow-2xl p-0">
+  <div class="p-4 space-y-3">
+    <div class="flex justify-between items-center"><h3 class="font-headline text-lg font-bold text-primary dark:text-primary-fixed">Pin Location</h3><button onclick="document.getElementById('map-modal').close()"><span class="material-symbols-outlined">close</span></button></div>
+    <div id="map-container" class="w-full h-64 rounded-lg z-0 relative z-10"></div>
+    <input id="addr-label" type="text" placeholder="Label (e.g. Home, Work)" class="w-full px-3 py-2 border rounded-lg text-sm bg-surface-container"/>
+    <textarea id="addr-details" placeholder="Flat No, Building, Area..." class="w-full px-3 py-2 border rounded-lg text-sm h-16 bg-surface-container"></textarea>
+    <button onclick="saveAddr()" class="w-full bg-primary text-white py-2.5 rounded-lg font-bold">Save Address</button>
   </div>
 </dialog>
 
@@ -151,7 +176,12 @@ dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
       <div id="cart-addr" class="bg-surface-container p-3 rounded-xl text-sm flex justify-between items-center cursor-pointer" onclick="nav('account')"><div class="flex items-center gap-2 text-primary dark:text-primary-fixed"><span class="material-symbols-outlined text-lg">location_on</span><span id="cart-addr-txt" class="font-medium">Select Address</span></div><span class="material-symbols-outlined text-sm">chevron_right</span></div>
       <div><h3 class="font-headline text-base mb-2">Delivery Time</h3><div class="flex overflow-x-auto gap-2 hide-scrollbar -mx-3 px-3" id="cart-slots"></div></div>
       <div class="bg-surface-container rounded-xl p-4 space-y-3">
-        <h3 class="font-headline text-base">Summary</h3>
+        <h3 class="font-headline text-base">Payment Method</h3>
+        <div class="flex gap-2">
+          <button id="pm-upi" onclick="pm='UPI';lC()" class="flex-1 py-3 rounded-xl border-2 text-sm font-bold border-primary bg-primary/5 text-primary transition-all">UPI / Card</button>
+          <button id="pm-cod" onclick="pm='COD';lC()" class="flex-1 py-3 rounded-xl border-2 text-sm font-bold border-transparent bg-white dark:bg-[#121212] transition-all">Cash on Delivery</button>
+        </div>
+        <h3 class="font-headline text-base mt-4">Summary</h3>
         <div id="os" class="space-y-1.5 text-xs opacity-80"></div>
         <div class="flex justify-between font-bold" id="oloyalty"></div>
         <div class="flex justify-between font-headline text-lg font-bold border-t border-black/10 dark:border-white/10 pt-2 mt-2"><span>To Pay</span><span id="ot">₹0</span></div>
@@ -195,7 +225,7 @@ dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
 <script>
 const S_KEY="lb_sid";
 let SID=localStorage.getItem(S_KEY); if(!SID){SID='s_'+Math.random().toString(36).substr(2,9);localStorage.setItem(S_KEY,SID)}
-const API=''; let cur='home', prev='home', CU=null, P=[], C=[], tip=30, slot="", lused=0;
+const API=''; let cur='home', prev='home', CU=null, P=[], C=[], tip=30, slot="", lused=0, pm="UPI";
 
 // System
 async function _f(path, opts={}){ return (await fetch(API+path,{credentials:'include',headers:{'Content-Type':'application/json','X-Session-Id':SID,'X-User-Id':CU?CU.id:''},...opts})).json(); }
@@ -209,6 +239,7 @@ async function init(){
   if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
   const o = await _f('/api/auth/me'); if(o.user){ CU=o.user; syncD(); } else if(localStorage.getItem('lb_dark')) toggleDark(false);
   nav('home'); lC(true);
+  if(window.location.hash.startsWith('#reset=')) showAuth('reset');
 }
 function toggleDark(tog=true){
   const d=document.documentElement; const isd=d.classList.contains('dark');
@@ -218,8 +249,14 @@ function toggleDark(tog=true){
 function syncD(){ if(CU && CU.dark_mode) { document.documentElement.classList.add('dark'); localStorage.setItem('lb_dark','true'); } }
 
 // Auth
-function toggleAuth(){ N('auth-login-form').classList.toggle('hidden'); N('auth-signup-form').classList.toggle('hidden'); N('auth-title').textContent=N('auth-login-form').classList.contains('hidden')?'Sign Up':'Login'; N('auth-err').classList.add('hidden'); }
-function showAuth(m){ const l=m==='login'; N('auth-login-form').classList.toggle('hidden',!l); N('auth-signup-form').classList.toggle('hidden',l); N('auth-title').textContent=l?'Login':'Sign Up'; N('auth-err').classList.add('hidden'); N('auth-modal').showModal(); }
+function toggleAuth(){ showAuth(N('auth-login-form').classList.contains('hidden')?'login':'signup'); }
+function showAuth(m){ 
+    const isL=m==='login', isS=m==='signup', isF=m==='forgot', isR=m==='reset';
+    N('auth-login-form').classList.toggle('hidden',!isL); N('auth-signup-form').classList.toggle('hidden',!isS);
+    N('auth-forgot-form').classList.toggle('hidden',!isF); N('auth-reset-form').classList.toggle('hidden',!isR);
+    N('auth-title').textContent=isL?'Login':isS?'Sign Up':isF?'Reset Password':'New Password';
+    N('auth-err').classList.add('hidden'); N('auth-modal').showModal(); 
+}
 async function doLogin(){
   const res = await _f('/api/auth/login',{method:'POST',body:JSON.stringify({email:N('a-email').value,password:N('a-pass').value})});
   if(res.error){ N('auth-err').textContent=res.error; N('auth-err').classList.remove('hidden'); return; }
@@ -229,6 +266,17 @@ async function doSignup(){
   const res = await _f('/api/auth/signup',{method:'POST',body:JSON.stringify({name:N('s-name').value,email:N('s-email').value,password:N('s-pass').value})});
   if(res.error){ N('auth-err').textContent=res.error; N('auth-err').classList.remove('hidden'); return; }
   CU=res.user; syncD(); msg('Account created!'); N('auth-modal').close(); lA();
+}
+async function doForgot(){
+  const res = await _f('/api/auth/forgot-password',{method:'POST',body:JSON.stringify({email:N('f-email').value})});
+  if(res.error){ N('auth-err').textContent=res.error; N('auth-err').classList.remove('hidden'); return; }
+  msg('Reset link sent to your email!'); N('auth-modal').close();
+}
+async function doReset(){
+  const token = window.location.hash.split('=')[1];
+  const res = await _f('/api/auth/reset-password',{method:'POST',body:JSON.stringify({token, password:N('r-pass').value})});
+  if(res.error){ N('auth-err').textContent=res.error; N('auth-err').classList.remove('hidden'); return; }
+  msg('Password updated! Please login.'); window.location.hash=''; showAuth('login');
 }
 async function lo(){ await _f('/api/auth/logout',{method:'POST'}); CU=null; msg('Logged out'); lA(); lH(); }
 
@@ -261,22 +309,35 @@ async function lH(){
 }
 
 // Search
-let rc="";
+let rc="", curPg=1, hasMore=true;
 async function lS(){
   try {
-    if(!P.length) P=(await _f('/api/products'))||[];
     const cs=['all','vegetables','fruits','dairy','bakery','spices','meat','snacks'];
-    N('search-cats').innerHTML=cs.map(c=>`<button onclick="rc='${c==='all'?'':c}'; lS()" class="px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${rc===(c==='all'?'':c)?'bg-primary text-white border-primary':'border-black/10 dark:border-white/10 opacity-60'}">${c.toUpperCase()}</button>`).join('');
+    N('search-cats').innerHTML=cs.map(c=>`<button onclick="rc='${c==='all'?'':c}'; curPg=1; N('si').value=''; doSearch()" class="px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${rc===(c==='all'?'':c)?'bg-primary text-white border-primary':'border-black/10 dark:border-white/10 opacity-60'}">${c.toUpperCase()}</button>`).join('');
     doSearch();
   } catch (e) { msg('Failed to load products'); }
 }
-async function doSearch(){
+async function doSearch(loadMore=false){
   try {
     const q=N('si').value.trim();
-    let ps=P||[]; if(rc) ps=ps.filter(x=>x.category===rc);
-    if(q){ const r=(await _f('/api/search?q='+encodeURIComponent(q)))||[]; const rids=r.map(x=>x.id); ps=ps.filter(x=>rids.includes(x.id)); }
-    N('sr').innerHTML = ps.length?ps.map(pct).join(''):'<div class="col-span-full py-12 text-center opacity-40">No items found</div>';
-  } catch (e) { msg('Search failed'); }
+    if(!loadMore) { curPg=1; P=[]; N('sr').innerHTML='<div class="col-span-full py-12 text-center opacity-40"><span class="material-symbols-outlined skeleton rounded w-8 h-8"></span></div>'; }
+    
+    let url = `/api/products?page=${curPg}&limit=12`;
+    if(rc) url += `&category=${rc}`;
+    
+    if(q){ 
+      const r=(await _f('/api/search?q='+encodeURIComponent(q)))||[]; 
+      P=r; hasMore=false; 
+    } else {
+      const res = await _f(url);
+      P = loadMore ? [...P, ...(res.products||[])] : (res.products||[]);
+      hasMore = curPg < res.totalPages;
+    }
+    
+    let html = P.length?P.map(pct).join(''):'<div class="col-span-full py-12 text-center opacity-40">No items found</div>';
+    if(hasMore && !q) html += `<div class="col-span-full py-4 text-center"><button onclick="curPg++; doSearch(true)" class="border border-primary text-primary px-6 py-2 rounded-full font-bold text-xs uppercase hover:bg-primary/5 transition-colors">Load More</button></div>`;
+    N('sr').innerHTML = html;
+  } catch (e) { console.error(e); msg('Search failed'); }
 }
 
 // Product
@@ -320,6 +381,9 @@ async function lC(silent=false){
       N('os').innerHTML=`<div class="flex justify-between"><span>Subtotal</span><span>₹${sub}</span></div><div class="flex justify-between"><span>Delivery</span><span>₹${dfee}</span></div><div class="flex justify-between"><span>Tip (Support Rider)</span><div><button onclick="tip=10;lC()" class="px-2 border rounded ${tip===10?'bg-primary text-white':''}">10</button><button onclick="tip=30;lC()" class="px-2 border rounded ml-1 ${tip===30?'bg-primary text-white':''}">30</button><button onclick="tip=50;lC()" class="px-2 border rounded ml-1 ${tip===50?'bg-primary text-white':''}">50</button></div></div><div class="flex justify-between text-green-600 font-bold"><span>Basket Pass Discount</span><span>-₹${dsc}</span></div>`;
       N('oloyalty').innerHTML=CU&&CU.loyalty_points>0?`<span class="text-xs text-secondary">Using ${lused} Loyalty Points (Max 10%)</span><span class="text-xs text-secondary">-₹${lused}</span>`:'';
       N('ot').textContent='₹'+tot;
+      
+      N('pm-upi').className = `flex-1 py-3 rounded-xl border-2 text-sm font-bold transition-all ${pm==='UPI'?'border-primary bg-primary/5 text-primary':'border-transparent bg-white dark:bg-[#121212]'}`;
+      N('pm-cod').className = `flex-1 py-3 rounded-xl border-2 text-sm font-bold transition-all ${pm==='COD'?'border-primary bg-primary/5 text-primary':'border-transparent bg-white dark:bg-[#121212]'}`;
     }
   } catch(e){ console.error(e); msg('Error loading cart'); }
 }
@@ -335,7 +399,7 @@ async function po(){
   const btn = document.querySelector('button[onclick="po()"]');
   if(btn) { btn.disabled = true; btn.innerHTML = 'Placing... <span class="material-symbols-outlined skeleton rounded-full w-4 h-4"></span>'; }
   try {
-    const res=await _f('/api/orders',{method:'POST',body:JSON.stringify({delivery:'express',slot,tip,loyalty_used:lused})});
+    const res=await _f('/api/orders',{method:'POST',body:JSON.stringify({delivery:'express',slot,tip,loyalty_used:lused,payment:pm})});
     if(btn) { btn.disabled = false; btn.innerHTML = 'Place Order <span class="material-symbols-outlined">arrow_forward</span>'; }
     if(res.error){ msg(res.error); return; } msg('Order Placed! 🎉'); lC(true); nav('tracking',res.order.id);
   } catch(e) {
@@ -353,14 +417,41 @@ async function lA(){
   const os=await _f('/api/orders'); N('a-orders').innerHTML=os.length?os.slice(0,5).map(o=>`<div class="bg-surface-container rounded-lg p-3 cursor-pointer" onclick="nav('tracking','${o.id}')"><div class="flex justify-between items-center mb-1"><span class="font-mono text-xs font-bold leading-none">#${o.id}</span><span class="text-[9px] bg-primary/10 text-primary dark:text-primary-fixed px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">${o.status}</span></div><p class="text-[10px] opacity-50 truncate">${o.items.map(i=>i.product_name).join(', ')}</p><p class="text-right text-xs font-bold mt-1">₹${o.grand_total}</p></div>`).join(''):'<p class="text-xs opacity-50">No orders</p>';
   const bs=await _f('/api/sub-boxes'); N('a-subs').innerHTML=bs.length?bs.map(b=>`<div class="bg-[#2d5016]/10 border border-[#2d5016]/20 p-3 rounded-xl flex justify-between items-center"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary dark:text-primary-fixed">local_florist</span><div><p class="text-xs font-bold uppercase">${b.box_type} Box</p><p class="text-[10px] opacity-70">Next: ${b.next_delivery}</p></div></div><button onclick="cancelSub('${b.id}')" class="bg-[#2d5016] text-white hover:bg-red-600 transition-colors text-[10px] font-bold px-3 py-1.5 rounded-full">Manage</button></div>`).join(''):`<div class="bg-surface-container p-4 rounded-xl text-center"><p class="text-xs mb-2">Weekly Farm Boxes starting at ₹499</p><button onclick="_f('/api/sub-boxes',{method:'POST',body:JSON.stringify({box_type:'veggie'})}).then(()=>{msg('Subscribed!');lA()})" class="text-xs bg-primary text-white font-bold px-4 py-1.5 rounded-full">Subscribe Now</button></div>`;
 }
+
+let map, marker, selectedLat=0, selectedLng=0;
 function da(){ 
-  const prompt = window.prompt("Enter new address label and details (e.g., Home: 123 Main St)");
-  if(prompt && prompt.includes(':')){ 
-    const p=prompt.split(':'); 
-    _f('/api/addresses',{method:'POST',body:JSON.stringify({label:p[0].trim(),full_address:p[1].trim(),is_default:1})}).then(()=>{msg('Address added!'); lA();}); 
-  } else if(prompt) {
-    alert("Please format as 'Label: Address' (e.g. Work: 456 Tech Park)");
-  }
+  N('map-modal').showModal();
+  if(!map) {
+    setTimeout(()=>{
+      map = L.map('map-container').setView([20.5937, 78.9629], 5);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+      marker = L.marker([20.5937, 78.9629], {draggable: true}).addTo(map);
+      
+      if(navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          const lat = pos.coords.latitude, lng = pos.coords.longitude;
+          map.setView([lat, lng], 15);
+          marker.setLatLng([lat, lng]);
+          selectedLat = lat; selectedLng = lng;
+        });
+      }
+      marker.on('dragend', function(e) { selectedLat = marker.getLatLng().lat; selectedLng = marker.getLatLng().lng; });
+      map.on('click', function(e) {
+        marker.setLatLng(e.latlng);
+        selectedLat = e.latlng.lat; selectedLng = e.latlng.lng;
+      });
+    }, 200);
+  } else { setTimeout(()=>map.invalidateSize(), 200); }
+}
+
+async function saveAddr(){
+  const lbl=N('addr-label').value.trim();
+  const det=N('addr-details').value.trim();
+  if(!lbl || !det){ msg('Label and details required'); return; }
+  await _f('/api/addresses',{method:'POST',body:JSON.stringify({label:lbl,full_address:det,lat:selectedLat,lng:selectedLng,is_default:1})});
+  msg('Address saved!'); N('map-modal').close(); 
+  N('addr-label').value=''; N('addr-details').value='';
+  if(cur==='account') lA(); else if(cur==='cart') lC(true); else lH();
 }
 
 // Tracking

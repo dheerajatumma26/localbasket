@@ -6,7 +6,31 @@ Features: SQLite+FTS5, Auth, Admin, SSE Tracking, Reviews, Loyalty, Flash Sales,
 from flask import Flask, jsonify, request, send_from_directory, session, Response
 from flask_cors import CORS
 import database as db
-import json, time, threading, requests, hashlib, os
+import json, time, threading, requests, hashlib, os, smtplib, uuid
+from email.message import EmailMessage
+
+def send_email(to_email, subject, body):
+    sender = os.environ.get("EMAIL_USER")
+    password = os.environ.get("EMAIL_PASS")
+    if not sender or not password:
+        print(f"\n--- SIMULATED EMAIL to {to_email} ---")
+        print(f"Subject: {subject}\n{body}\n---------------------------\n")
+        return True
+    
+    msg = EmailMessage()
+    msg.set_content(body)
+    msg['Subject'] = subject
+    msg['From'] = f"Local Basket <{sender}>"
+    msg['To'] = to_email
+    try:
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.login(sender, password)
+        server.send_message(msg)
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Failed to send email to {to_email}: {e}")
+        return False
 
 def upload_to_cloudinary(base64_img):
     cloud_name, api_key, api_secret = "dfedwdajz", "699479815565524", "CF77WLVmSBIh3ztBVHnCk13-j6I"
@@ -41,7 +65,35 @@ def signup():
     uid = db.create_user(e, p, n, d.get("phone",""))
     if not uid: return jsonify({"error":"Email already registered"}), 409
     session["user_id"] = uid
+    body = f"Welcome to Local Basket, {n}!\n\nWe are thrilled to have you. Start shopping your local favorites today."
+    threading.Thread(target=send_email, args=(e, "Welcome to Local Basket!", body)).start()
     return jsonify({"success":True,"user":db.get_user(uid)})
+
+@app.route("/api/auth/forgot-password", methods=["POST"])
+def forgot_password():
+    e = request.get_json().get("email", "").strip()
+    if not e: return jsonify({"error":"Email required"}), 400
+    with db.get_db() as conn:
+        u = conn.execute("SELECT id, name FROM users WHERE email=?", (e,)).fetchone()
+        if not u: return jsonify({"success":True})
+        token = str(uuid.uuid4())
+        conn.execute("UPDATE users SET reset_token=?, reset_expiry=datetime('now', '+1 hour') WHERE id=?", (token, u['id']))
+    
+    reset_link = f"{request.host_url}#reset={token}"
+    body = f"Hi {u['name']},\n\nYou requested a password reset. Click here to reset your password:\n{reset_link}\n\nIf you did not request this, please ignore this email."
+    threading.Thread(target=send_email, args=(e, "Reset Your Password - Local Basket", body)).start()
+    return jsonify({"success":True})
+
+@app.route("/api/auth/reset-password", methods=["POST"])
+def reset_password():
+    d = request.get_json()
+    t, p = d.get("token"), d.get("password")
+    if not t or not p or len(p) < 4: return jsonify({"error":"Invalid request"}), 400
+    with db.get_db() as conn:
+        u = conn.execute("SELECT id FROM users WHERE reset_token=? AND reset_expiry > datetime('now')", (t,)).fetchone()
+        if not u: return jsonify({"error":"Invalid or expired token"}), 400
+        conn.execute("UPDATE users SET password_hash=?, reset_token=NULL, reset_expiry=NULL WHERE id=?", (db.hash_pw(p), u['id']))
+    return jsonify({"success":True})
 
 @app.route("/api/auth/login", methods=["POST"])
 def login():
@@ -71,7 +123,11 @@ def prefs():
 # ─── Products ────────────────────────────────────────────────
 @app.route("/api/products")
 def get_products():
-    return jsonify(db.get_all_products(request.args.get("category"), request.args.get("all")!="1" if request.args.get("all") else True))
+    page = request.args.get("page", type=int)
+    limit = request.args.get("limit", 20, type=int)
+    cat = request.args.get("category")
+    active = request.args.get("all") != "1" if request.args.get("all") else True
+    return jsonify(db.get_all_products(cat, active, page, limit))
 
 @app.route("/api/products/<pid>")
 def get_product(pid):

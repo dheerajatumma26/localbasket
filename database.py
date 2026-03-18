@@ -109,14 +109,22 @@ def update_user_pref(user_id, **kw):
                 db.execute(f"UPDATE users SET {k}=? WHERE id=?", (v, user_id))
 
 # ─── Products ────────────────────────────────────────────────
-def get_all_products(category=None, active_only=True):
+def get_all_products(category=None, active_only=True, page=None, limit=None):
     with get_db() as db:
         q, p = "SELECT * FROM products", []
         cl = []
         if active_only: cl.append("is_active=1")
         if category and category != "all": cl.append("category=?"); p.append(category)
         if cl: q += " WHERE " + " AND ".join(cl)
-        return drs(db.execute(q + " ORDER BY name", p).fetchall())
+        
+        total = db.execute(q.replace("SELECT *", "SELECT COUNT(*)"), p).fetchone()[0] if page else 0
+        q += " ORDER BY name"
+        if page and limit:
+            q += " LIMIT ? OFFSET ?"
+            p.extend([limit, (page-1)*limit])
+            
+        data = drs(db.execute(q, p).fetchall())
+        return {"products": data, "total": total, "page": page, "limit": limit, "totalPages": (total+limit-1)//limit} if page else data
 
 def get_product(pid):
     with get_db() as db: return dr(db.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone())
