@@ -218,9 +218,37 @@ def search():
     q = (request.args.get("q","")).strip()
     return jsonify(db.search_products(q) if q else [])
 
+@app.route("/api/recommendations/personalized")
+def get_pers_recs():
+    uid = session.get("user_id")
+    if not uid: 
+        with db.get_db() as conn:
+            recs = db.drs(conn.execute("SELECT * FROM products WHERE is_active=1 ORDER BY rating DESC LIMIT 8").fetchall())
+        return jsonify(recs)
+    
+    with db.get_db() as conn:
+        cats = conn.execute("""
+            SELECT p.category, COUNT(*) as cnt 
+            FROM order_items oi 
+            JOIN products p ON oi.product_id = p.id 
+            JOIN orders o ON oi.order_id = o.id 
+            WHERE o.user_id = ? 
+            GROUP BY p.category 
+            ORDER BY cnt DESC LIMIT 2
+        """, (uid,)).fetchall()
+        
+        fav_cats = [c["category"] for c in cats] if cats else ["vegetables", "fruits"]
+        recs = db.drs(conn.execute(f"""
+            SELECT * FROM products 
+            WHERE category IN ({','.join(['?']*len(fav_cats))}) AND is_active=1 
+            ORDER BY rating DESC LIMIT 8
+        """, fav_cats).fetchall())
+    return jsonify(recs)
+
 @app.route("/api/deals")
 def deals(): return jsonify(db.get_flash_sales())
 
+# ─── Recommendations ──────────────────────────────────────────
 @app.route("/api/recommendations")
 def recs():
     u = cu()
@@ -278,12 +306,27 @@ def place_order():
     s = sid(); u = cu(); d = request.get_json() or {}
     items = db.get_cart(s)
     if not items: return jsonify({"error":"Cart is empty"}), 400
+    
+    # Check session/user match and stock
     for i in items:
         if i["stock"] < i["qty"]: return jsonify({"error":f"{i['name']} only has {i['stock']} left"}), 400
-    order = db.create_order(s, u["id"] if u else None, items, d.get("delivery","express"),
-        int(d.get("tip",30)), d.get("payment","UPI"), d.get("address",""), d.get("slot",""), int(d.get("loyalty_used",0)))
-    _sim_order(order["id"])
-    return jsonify({"success":True,"order":order})
+
+    # Signature: (session_id, user_id, cart_items, delivery, tip, payment, address="", slot="", loyalty_used=0)
+    res = db.create_order(
+        s, 
+        u["id"] if u else None, 
+        items, 
+        d.get("delivery", "express"), 
+        int(d.get("tip", 30)), 
+        d.get("payment", "UPI"), 
+        d.get("address", ""), 
+        d.get("slot", ""), 
+        int(d.get("loyalty_used", 0))
+    )
+    
+    _sim_order(res["id"])
+    if u: threading.Thread(target=send_order_email, args=(u["id"], res["id"])).start()
+    return jsonify({"success":True, "order":res})
 
 @app.route("/api/orders")
 def get_orders():

@@ -108,16 +108,24 @@ dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
 <!-- HOME -->
 <div id="page-home" data-page class="pb-24">
   <header class="bg-surface/90 dark:bg-[#121212]/90 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between px-3 py-2.5 border-b border-black/5 dark:border-white/5">
-    <div class="flex items-center gap-2 cursor-pointer" onclick="nav('account')">
-      <div class="bg-surface-container rounded-full p-1 text-primary dark:text-primary-fixed"><span class="material-symbols-outlined text-[16px]">location_on</span></div>
-      <div><span class="block text-[8px] uppercase tracking-wider opacity-60">Delivering to</span><span id="hdr-addr" class="block text-xs font-bold text-primary dark:text-white">Select setup <span class="material-symbols-outlined text-[10px]">expand_more</span></span></div>
-    </div>
+    <div id="hdr-content" class="flex items-center justify-between w-full hidden">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary"><span class="material-symbols-outlined">location_on</span></div>
+              <div onclick="da()" class="flex flex-col cursor-pointer"><span class="text-[10px] opacity-50 font-bold uppercase tracking-widest">Delivering to</span><span id="hdr-addr" class="text-xs font-bold flex items-center gap-1">Select Address <span class="material-symbols-outlined text-[10px]">expand_more</span></span></div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div id="hdr-wallet" class="hidden bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm border border-orange-100 dark:border-orange-800/30">
+                <span class="material-symbols-outlined text-sm">account_balance_wallet</span>
+                <span id="wallet-amt" class="text-[10px] font-black uppercase tracking-tighter">0</span>
+              </div>
+              <button onclick="nav('profile')" class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border-2 border-white dark:border-white/5 shadow-sm"><img id="hdr-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Local" class="w-full h-full object-cover"/></button>
+            </div>
+          </div>
     <div class="text-lg font-headline italic text-primary dark:text-primary-fixed">Local Basket</div>
     <div class="flex items-center gap-1">
       <button onclick="toggleDark()" class="p-1.5 rounded-full hover:bg-surface-container"><span class="material-symbols-outlined text-[18px]">dark_mode</span></button>
     </div>
   </header>
-  <main class="max-w-3xl mx-auto px-3 space-y-6 mt-3">
   <main class="max-w-3xl mx-auto px-3 space-y-8 mt-4">
     <!-- Hero Section -->
     <div id="hdr-skeleton" class="w-full h-48 rounded-2xl skeleton"></div>
@@ -196,9 +204,21 @@ dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
           <button id="pm-cod" onclick="pm='COD';lC()" class="flex-1 py-3 rounded-xl border-2 text-sm font-bold border-transparent bg-white dark:bg-[#121212] transition-all">Cash on Delivery</button>
         </div>
         <h3 class="font-headline text-base mt-4">Summary</h3>
-        <div id="os" class="space-y-1.5 text-xs opacity-80"></div>
-        <div class="flex justify-between font-bold" id="oloyalty"></div>
-        <div class="flex justify-between font-headline text-lg font-bold border-t border-black/10 dark:border-white/10 pt-2 mt-2"><span>To Pay</span><span id="ot">₹0</span></div>
+        <div class="bg-primary/5 p-4 rounded-2xl mb-6">
+          <div class="flex items-center justify-between text-xs font-bold mb-3"><span>Cart Total</span><span id="co-sub">₹0</span></div>
+          <div id="loyalty-opt" class="hidden mb-3 p-3 bg-white dark:bg-black/20 rounded-xl border border-primary/10">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-orange-500 text-sm">stars</span>
+                <span class="text-[10px] font-bold">Use Wallet Points (<span id="avail-pts">0</span>)</span>
+              </div>
+              <input type="checkbox" id="use-loyalty" onchange="syncD()" class="w-4 h-4 accent-primary"/>
+            </div>
+          </div>
+          <div class="flex items-center justify-between text-xs font-bold opacity-50 mb-1"><span>Delivery Fee</span><span>₹40</span></div>
+          <div class="flex items-center justify-between text-xs font-bold opacity-50 mb-3"><span>Packaging</span><span>₹5</span></div>
+          <div class="flex items-center justify-between text-base font-black border-t border-primary/10 pt-3"><span>To Pay</span><span id="co-grand">₹0</span></div>
+        </div>
         <button onclick="po()" class="w-full bg-[#E8873A] text-white py-3.5 rounded-xl font-bold text-sm shadow flex justify-center items-center gap-2">Place Order <span class="material-symbols-outlined">arrow_forward</span></button>
       </div>
     </div>
@@ -363,6 +383,9 @@ async function lH(){
         </div>
       </div>`).join('');
 
+    // Personalized Recs
+    lPR();
+
     // Category Sections
     N('home-sections').innerHTML = (categories||[]).map(c => `
       <section>
@@ -380,17 +403,37 @@ async function lH(){
       </section>
     `).join('');
 
-    // Update Header Address
+    // Update Header
     if(CU){ 
         const as = await _f('/api/addresses'); 
         const ad = as && as.length ? (as.find(a=>a.is_default) || as[0]) : null; 
         N('hdr-addr').innerHTML = ad ? `${ad.label} <span class="material-symbols-outlined text-[10px]">expand_more</span>` : 'Add Address+'; 
+        N('hdr-wallet').classList.remove('hidden');
+        N('wallet-amt').textContent = CU.loyalty_points || 0;
+        N('hdr-avatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${CU.id}`;
     } else {
         N('hdr-addr').innerHTML = `Select Address <span class="material-symbols-outlined text-[10px]">expand_more</span>`;
+        N('hdr-wallet').classList.add('hidden');
     }
 
   } catch (e) { console.error("Home loading error", e); msg("Failed to load some data"); }
   N('hdr-skeleton').classList.add('hidden'); N('hdr-content').classList.remove('hidden');
+}
+
+async function lPR(){
+    if(!CU) { 
+        N('pers-recs-section').classList.add('hidden'); 
+        return; 
+    }
+    try {
+        const recs = await _f('/api/recommendations/personalized');
+        if(recs && recs.length) {
+            N('pers-recs-section').classList.remove('hidden');
+            N('pers-recs').innerHTML = recs.map(p => `<div class="flex-shrink-0 w-36">${pct(p)}</div>`).join('');
+        } else {
+            N('pers-recs-section').classList.add('hidden');
+        }
+    } catch(e) { N('pers-recs-section').classList.add('hidden'); }
 }
 
 // Search
@@ -474,14 +517,26 @@ async function lC(silent=false){
         if(!slot && ss && ss.length) slot=ss[0].id;
       }
       // Math
-      const sub=res.total||0; const dfee=C.length?40:0; const dsc=Math.round(sub*0.05); const mlo=CU?Math.min(CU.loyalty_points,Math.floor(sub*0.1)):0; lused=mlo;
+      const sub=res.total||0; const dfee=C.length?40:0; const dsc=Math.round(sub*0.05); 
+      
+      const canUse = CU ? Math.min(CU.loyalty_points, Math.floor(sub * 0.1)) : 0;
+      const isChecked = N('use-loyalty') && N('use-loyalty').checked;
+      lused = isChecked ? canUse : 0;
+
       const tot=Math.max(0,sub+dfee+tip-dsc-lused);
-      N('os').innerHTML=`<div class="flex justify-between"><span>Subtotal</span><span>₹${sub}</span></div><div class="flex justify-between"><span>Delivery</span><span>₹${dfee}</span></div><div class="flex justify-between"><span>Tip (Support Rider)</span><div><button onclick="tip=10;lC()" class="px-2 border rounded ${tip===10?'bg-primary text-white':''}">10</button><button onclick="tip=30;lC()" class="px-2 border rounded ml-1 ${tip===30?'bg-primary text-white':''}">30</button><button onclick="tip=50;lC()" class="px-2 border rounded ml-1 ${tip===50?'bg-primary text-white':''}">50</button></div></div><div class="flex justify-between text-green-600 font-bold"><span>Basket Pass Discount</span><span>-₹${dsc}</span></div>`;
-      N('oloyalty').innerHTML=CU&&CU.loyalty_points>0?`<span class="text-xs text-secondary">Using ${lused} Loyalty Points (Max 10%)</span><span class="text-xs text-secondary">-₹${lused}</span>`:'';
-      N('ot').textContent='₹'+tot;
+      N('co-sub').textContent = `₹${sub}`;
+      N('co-grand').textContent = `₹${tot}`;
+      
+      if (CU && CU.loyalty_points > 0) {
+          N('loyalty-opt').classList.remove('hidden');
+          N('avail-pts').textContent = CU.loyalty_points;
+      } else {
+          N('loyalty-opt').classList.add('hidden');
+      }
       
       N('pm-upi').className = `flex-1 py-3 rounded-xl border-2 text-sm font-bold transition-all ${pm==='UPI'?'border-primary bg-primary/5 text-primary':'border-transparent bg-white dark:bg-[#121212]'}`;
       N('pm-cod').className = `flex-1 py-3 rounded-xl border-2 text-sm font-bold transition-all ${pm==='COD'?'border-primary bg-primary/5 text-primary':'border-transparent bg-white dark:bg-[#121212]'}`;
+
     }
   } catch(e){ console.error(e); msg('Error loading cart'); }
 }
@@ -500,7 +555,13 @@ async function po(){
   try {
     const res=await _f('/api/orders',{method:'POST',body:JSON.stringify({delivery:'express',slot,tip,loyalty_used:lused,payment:pm})});
     if(btn) { btn.disabled = false; btn.innerHTML = 'Place Order <span class="material-symbols-outlined">arrow_forward</span>'; }
-    if(res.error){ msg(res.error); return; } msg('Order Placed! 🎉'); lC(true); nav('tracking',res.order.id);
+    if(res.error){ msg(res.error); return; } 
+    msg('Order Placed! 🎉'); 
+    
+    // Refresh user to get new points
+    const me = await _f('/api/auth/me'); CU = me.user;
+    
+    lC(true); nav('tracking',res.order.id);
   } catch(e) {
     if(btn) { btn.disabled = false; btn.innerHTML = 'Place Order <span class="material-symbols-outlined">arrow_forward</span>'; }
     msg('Failed to place order. Try again.');
@@ -511,7 +572,10 @@ async function po(){
 async function lA(){
   if(!CU){ N('acc-guest').classList.remove('hidden'); N('acc-user').classList.add('hidden'); return; }
   N('acc-guest').classList.add('hidden'); N('acc-user').classList.remove('hidden');
-  N('a-name').textContent=CU.name; N('a-email').textContent=CU.email; N('a-pts').textContent=CU.loyalty_points;
+  N('a-name').textContent=CU.name; N('a-email').textContent=CU.email; 
+  N('a-pts').textContent=CU.loyalty_points || 0;
+  N('wallet-amt').textContent = CU.loyalty_points || 0;
+
   const as=await _f('/api/addresses'); N('a-addr').innerHTML=as.length?as.map(a=>`<div class="bg-surface-container rounded-lg p-3 text-xs flex justify-between"><div><span class="font-bold">${a.label}</span><p class="opacity-70 mt-1">${a.full_address}</p></div><button onclick="_f('/api/addresses/${a.id}',{method:'DELETE'}).then(lA)" class="opacity-50"><span class="material-symbols-outlined text-sm">delete</span></button></div>`).join(''):'<p class="text-xs opacity-50">No addresses</p>';
   const os=await _f('/api/orders'); N('a-orders').innerHTML=os.length?os.slice(0,5).map(o=>`<div class="bg-surface-container rounded-lg p-3 cursor-pointer" onclick="nav('tracking','${o.id}')"><div class="flex justify-between items-center mb-1"><span class="font-mono text-xs font-bold leading-none">#${o.id}</span><span class="text-[9px] bg-primary/10 text-primary dark:text-primary-fixed px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">${o.status}</span></div><p class="text-[10px] opacity-50 truncate">${o.items.map(i=>i.product_name).join(', ')}</p><p class="text-right text-xs font-bold mt-1">₹${o.grand_total}</p></div>`).join(''):'<p class="text-xs opacity-50">No orders</p>';
   const bs=await _f('/api/sub-boxes'); N('a-subs').innerHTML=bs.length?bs.map(b=>`<div class="bg-[#2d5016]/10 border border-[#2d5016]/20 p-3 rounded-xl flex justify-between items-center"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary dark:text-primary-fixed">local_florist</span><div><p class="text-xs font-bold uppercase">${b.box_type} Box</p><p class="text-[10px] opacity-70">Next: ${b.next_delivery}</p></div></div><button onclick="cancelSub('${b.id}')" class="bg-[#2d5016] text-white hover:bg-red-600 transition-colors text-[10px] font-bold px-3 py-1.5 rounded-full">Manage</button></div>`).join(''):`<div class="bg-surface-container p-4 rounded-xl text-center"><p class="text-xs mb-2">Weekly Farm Boxes starting at ₹499</p><button onclick="_f('/api/sub-boxes',{method:'POST',body:JSON.stringify({box_type:'veggie'})}).then(()=>{msg('Subscribed!');lA()})" class="text-xs bg-primary text-white font-bold px-4 py-1.5 rounded-full">Subscribe Now</button></div>`;
