@@ -306,7 +306,7 @@ def nf(e):
     return jsonify({"error":"Not found"}), 404
 
 if __name__ == "__main__":
-    print("\n🛒  Local Basket – Premium Server")
+    print("\n[Local Basket] Premium Server")
     print("    Customer: http://localhost:5000")
     print("    Admin:    http://localhost:5000/admin")
     print("    Admin:    admin@localbasket.com / admin123\n")

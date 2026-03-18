@@ -248,82 +248,100 @@ function pct(p){
 // Home
 async function lH(){
   N('hdr-skeleton').classList.remove('hidden'); N('hdr-content').classList.add('hidden');
-  const [deals, recs] = await Promise.all([_f('/api/deals'), _f('/api/recommendations')]);
-  N('flash-sales').innerHTML = deals.map(d=>`<div class="flex-shrink-0 w-40 cursor-pointer" onclick="nav('product','${d.product_id}')"><div class="relative h-24 rounded-xl overflow-hidden mb-1"><img src="${img(d.img,300)}" class="w-full h-full object-cover"/><div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div><div class="absolute bottom-2 left-2 text-white"><p class="text-[9px] font-bold text-red-400">⚡ FLASH SALE</p><p class="text-xs font-bold leading-tight">${d.name}</p><p class="text-xs">₹${d.sale_price} <s class="text-[9px] opacity-70">₹${d.original_price}</s></p></div></div></div>`).join('');
-  N('home-recs').innerHTML = recs.map(pct).join('');
-  const cs=['vegetables','fruits','dairy','bakery','spices','meat','snacks']; const ci={'vegetables':'🥦','fruits':'🍎','dairy':'🥛','bakery':'🍞','spices':'🌶️','meat':'🥩','snacks':'🥜'};
-  N('home-cats').innerHTML = cs.map(c=>`<div class="flex flex-col items-center gap-1 cursor-pointer" onclick="rc='${c}';N('si').value='';nav('search')"><div class="w-14 h-14 bg-surface-container rounded-full flex items-center justify-center text-2xl">${ci[c]}</div><span class="text-[10px] uppercase font-bold opacity-60">${c}</span></div>`).join('');
-  if(CU){ const as=await _f('/api/addresses'); const ad=as.find(a=>a.is_default)||as[0]; N('hdr-addr').innerHTML = ad?`${ad.label} <span class="material-symbols-outlined text-[10px]">expand_more</span>`:'Select Address+'; }
-  else N('hdr-addr').innerHTML = `Select Address <span class="material-symbols-outlined text-[10px]">expand_more</span>`;
+  try {
+    const [deals, recs] = await Promise.all([_f('/api/deals'), _f('/api/recommendations')]);
+    N('flash-sales').innerHTML = (deals||[]).map(d=>`<div class="flex-shrink-0 w-40 cursor-pointer" onclick="nav('product','${d.product_id}')"><div class="relative h-24 rounded-xl overflow-hidden mb-1"><img src="${img(d.img,300)}" class="w-full h-full object-cover"/><div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div><div class="absolute bottom-2 left-2 text-white"><p class="text-[9px] font-bold text-red-400">⚡ FLASH SALE</p><p class="text-xs font-bold leading-tight">${d.name}</p><p class="text-xs">₹${d.sale_price} <s class="text-[9px] opacity-70">₹${d.original_price}</s></p></div></div></div>`).join('');
+    N('home-recs').innerHTML = (recs||[]).map(pct).join('');
+    const cs=['vegetables','fruits','dairy','bakery','spices','meat','snacks']; const ci={'vegetables':'🥦','fruits':'🍎','dairy':'🥛','bakery':'🍞','spices':'🌶️','meat':'🥩','snacks':'🥜'};
+    N('home-cats').innerHTML = cs.map(c=>`<div class="flex flex-col items-center gap-1 cursor-pointer" onclick="rc='${c}';N('si').value='';nav('search')"><div class="w-14 h-14 bg-surface-container rounded-full flex items-center justify-center text-2xl">${ci[c]}</div><span class="text-[10px] uppercase font-bold opacity-60">${c}</span></div>`).join('');
+    if(CU){ const as=await _f('/api/addresses'); const ad=as&&as.length?(as.find(a=>a.is_default)||as[0]):null; N('hdr-addr').innerHTML = ad?`${ad.label} <span class="material-symbols-outlined text-[10px]">expand_more</span>`:'Select Address+'; }
+    else N('hdr-addr').innerHTML = `Select Address <span class="material-symbols-outlined text-[10px]">expand_more</span>`;
+  } catch (e) { console.error("Home loading error", e); msg("Failed to load some data"); }
   N('hdr-skeleton').classList.add('hidden'); N('hdr-content').classList.remove('hidden');
 }
 
 // Search
 let rc="";
 async function lS(){
-  if(!P.length) P=await _f('/api/products');
-  const cs=['all','vegetables','fruits','dairy','bakery','spices','meat','snacks'];
-  N('search-cats').innerHTML=cs.map(c=>`<button onclick="rc='${c==='all'?'':c}'; lS()" class="px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${rc===(c==='all'?'':c)?'bg-primary text-white border-primary':'border-black/10 dark:border-white/10 opacity-60'}">${c.toUpperCase()}</button>`).join('');
-  doSearch();
+  try {
+    if(!P.length) P=(await _f('/api/products'))||[];
+    const cs=['all','vegetables','fruits','dairy','bakery','spices','meat','snacks'];
+    N('search-cats').innerHTML=cs.map(c=>`<button onclick="rc='${c==='all'?'':c}'; lS()" class="px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${rc===(c==='all'?'':c)?'bg-primary text-white border-primary':'border-black/10 dark:border-white/10 opacity-60'}">${c.toUpperCase()}</button>`).join('');
+    doSearch();
+  } catch (e) { msg('Failed to load products'); }
 }
 async function doSearch(){
-  const q=N('si').value.trim();
-  let ps=P; if(rc) ps=ps.filter(x=>x.category===rc);
-  if(q){ const r=await _f('/api/search?q='+encodeURIComponent(q)); const rids=r.map(x=>x.id); ps=ps.filter(x=>rids.includes(x.id)); }
-  N('sr').innerHTML = ps.length?ps.map(pct).join(''):'<div class="col-span-full py-12 text-center opacity-40">No items found</div>';
+  try {
+    const q=N('si').value.trim();
+    let ps=P||[]; if(rc) ps=ps.filter(x=>x.category===rc);
+    if(q){ const r=(await _f('/api/search?q='+encodeURIComponent(q)))||[]; const rids=r.map(x=>x.id); ps=ps.filter(x=>rids.includes(x.id)); }
+    N('sr').innerHTML = ps.length?ps.map(pct).join(''):'<div class="col-span-full py-12 text-center opacity-40">No items found</div>';
+  } catch (e) { msg('Search failed'); }
 }
 
 // Product
 async function lP(pid){
   N('pd-skeleton').classList.remove('hidden'); N('pd').classList.add('hidden');
-  const [p, recs] = await Promise.all([_f('/api/products/'+pid), _f('/api/recommendations?product_id='+pid)]);
-  const revs=p.reviews||[];
-  N('pd').innerHTML = `
-    <div class="relative aspect-square rounded-2xl overflow-hidden"><img src="${img(p.img,500)}" class="w-full h-full object-cover"/>${p.badge?`<span class="absolute top-3 left-3 bg-secondary text-white text-[10px] px-2 py-1 rounded-lg uppercase font-bold">${p.badge}</span>`:''}${!p.inStock?'<span class="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center text-red-600 font-bold text-xl">Out of Stock</span>':''}</div>
-    <div><div class="flex justify-between items-start"><h1 class="text-2xl font-headline font-bold leading-tight">${p.name}</h1><button class="text-secondary bg-secondary/10 px-2 py-1 rounded flex items-center gap-1 text-xs font-bold">⭐ ${p.rating}</button></div><p class="text-[10px] uppercase tracking-widest opacity-50 mt-1">${p.farm} · ${p.unit}</p></div>
-    <div class="flex items-center justify-between bg-surface-container p-3 rounded-xl"><span class="text-3xl font-primary font-bold text-primary dark:text-primary-fixed">₹${p.price}</span><button onclick="aC('${p.id}')" class="bg-primary text-white px-6 py-2.5 rounded-xl font-bold ${!p.inStock?'opacity-50 pointer-events-none':''}">Add to Basket</button></div>
-    <p class="text-sm opacity-80 leading-relaxed">${p.description}</p>
-    ${recs.length?`<div class="pt-4 border-t border-black/5 dark:border-white/5"><h3 class="font-headline font-bold mb-3">Often bought together</h3><div class="flex overflow-x-auto gap-3 hide-scrollbar -mx-3 px-3">${recs.map(r=>`<div class="flex-shrink-0 w-32 cursor-pointer" onclick="nav('product','${r.id}')"><img src="${img(r.img,200)}" class="w-full aspect-square rounded-xl object-cover mb-1"/><p class="text-xs font-bold truncate">${r.name}</p><p class="text-xs opacity-60">₹${r.price}</p></div>`).join('')}</div></div>`:''}
-    <div class="pt-4 border-t border-black/5 dark:border-white/5"><div class="flex justify-between items-center mb-3"><h3 class="font-headline font-bold">Reviews (${revs.length})</h3></div>${revs.length?revs.slice(0,3).map(r=>`<div class="mb-3 bg-surface-container rounded-lg p-3"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold">${r.user_name}</span><span class="text-[10px] text-yellow-500">⭐ ${r.rating}</span></div><p class="text-xs opacity-80">${r.comment||'Verified Purchase'}</p></div>`).join(''):'<p class="text-xs opacity-50">No reviews yet.</p>'}</div>
-  `;
-  N('pd-skeleton').classList.add('hidden'); N('pd').classList.remove('hidden');
+  try {
+    const [p, recs] = await Promise.all([_f('/api/products/'+pid), _f('/api/recommendations?product_id='+pid)]);
+    if (!p || p.error) { msg('Product not found'); nav('home'); return; }
+    const revs=p.reviews||[];
+    N('pd').innerHTML = `
+      <div class="relative aspect-square rounded-2xl overflow-hidden"><img src="${img(p.img,500)}" class="w-full h-full object-cover"/>${p.badge?`<span class="absolute top-3 left-3 bg-secondary text-white text-[10px] px-2 py-1 rounded-lg uppercase font-bold">${p.badge}</span>`:''}${!p.inStock?'<span class="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center text-red-600 font-bold text-xl">Out of Stock</span>':''}</div>
+      <div><div class="flex justify-between items-start"><h1 class="text-2xl font-headline font-bold leading-tight">${p.name}</h1><button class="text-secondary bg-secondary/10 px-2 py-1 rounded flex items-center gap-1 text-xs font-bold">⭐ ${p.rating}</button></div><p class="text-[10px] uppercase tracking-widest opacity-50 mt-1">${p.farm} · ${p.unit}</p></div>
+      <div class="flex items-center justify-between bg-surface-container p-3 rounded-xl"><span class="text-3xl font-primary font-bold text-primary dark:text-primary-fixed">₹${p.price}</span><button onclick="aC('${p.id}')" class="bg-primary text-white px-6 py-2.5 rounded-xl font-bold ${!p.inStock?'opacity-50 pointer-events-none':''}">Add to Basket</button></div>
+      <p class="text-sm opacity-80 leading-relaxed">${p.description}</p>
+      ${recs&&recs.length?`<div class="pt-4 border-t border-black/5 dark:border-white/5"><h3 class="font-headline font-bold mb-3">Often bought together</h3><div class="flex overflow-x-auto gap-3 hide-scrollbar -mx-3 px-3">${recs.map(r=>`<div class="flex-shrink-0 w-32 cursor-pointer" onclick="nav('product','${r.id}')"><img src="${img(r.img,200)}" class="w-full aspect-square rounded-xl object-cover mb-1"/><p class="text-xs font-bold truncate">${r.name}</p><p class="text-xs opacity-60">₹${r.price}</p></div>`).join('')}</div></div>`:''}
+      <div class="pt-4 border-t border-black/5 dark:border-white/5"><div class="flex justify-between items-center mb-3"><h3 class="font-headline font-bold">Reviews (${revs.length})</h3></div>${revs.length?revs.slice(0,3).map(r=>`<div class="mb-3 bg-surface-container rounded-lg p-3"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold">${r.user_name}</span><span class="text-[10px] text-yellow-500">⭐ ${r.rating}</span></div><p class="text-xs opacity-80">${r.comment||'Verified Purchase'}</p></div>`).join(''):'<p class="text-xs opacity-50">No reviews yet.</p>'}</div>
+    `;
+    N('pd-skeleton').classList.add('hidden'); N('pd').classList.remove('hidden');
+  } catch (e) { msg('Error loading product'); nav('home'); }
 }
 
 // Cart
 async function lC(silent=false){
-  const res=await _f('/api/cart'); C=res.items||[]; const B=N('cb'); B.textContent=res.itemCount; B.classList.toggle('hidden',res.itemCount===0);
-  if(!silent){
-    N('cb').classList.add('badge-bounce'); setTimeout(()=>N('cb').classList.remove('badge-bounce'),300);
-    N('ce').classList.toggle('hidden',C.length>0); N('cs').classList.toggle('hidden',C.length===0); N('cl').textContent=`${C.length} Items`;
-    N('ci').innerHTML=C.map(i=>`<div class="flex gap-3 bg-surface-container rounded-xl p-2 items-center"><img src="${img(i.img,150)}" class="w-16 h-16 rounded-lg object-cover"/><div class="flex-1 min-w-0"><h3 class="text-sm font-bold truncate">${i.name}</h3><p class="text-[10px] opacity-60 mb-1">${i.unit} · ₹${i.price}</p><div class="flex items-center gap-2"><div class="flex bg-white dark:bg-[#121212] rounded-lg items-center text-xs"><button onclick="uC('${i.product_id}',${i.qty-1})" class="px-2 py-1">-</button><span class="font-bold w-4 text-center">${i.qty}</span><button onclick="uC('${i.product_id}',${i.qty+1})" class="px-2 py-1">+</button></div></div></div><div class="text-right pr-2"><div class="font-bold text-sm">₹${i.qty*i.price}</div></div></div>`).join('');
-    // Slots & Address
-    if(CU){
-      const [as,ss]=await Promise.all([_f('/api/addresses'),_f('/api/delivery-slots')]); 
-      const ad=as.find(a=>a.is_default)||as[0]; if(ad)N('cart-addr-txt').textContent=ad.label+': '+ad.full_address;
-      N('cart-slots').innerHTML=ss.map((s,i)=>`<div class="flex-shrink-0 border-2 rounded-xl p-2 cursor-pointer w-28 text-center ${slot===s.id||(i===0&&!slot)?'border-primary bg-primary/5':'border-transparent bg-surface-container'}" onclick="slot='${s.id}';lC()"><div class="text-[10px] font-bold uppercase opacity-60">${s.day}</div><div class="text-xs font-bold py-1">${s.time}</div><div class="text-[9px] ${s.fee===0?'text-green-600 font-bold':'opacity-50'}">${s.fee===0?'FREE':'₹'+s.fee}</div></div>`).join('');
-      if(!slot) slot=ss[0].id;
+  try {
+    const res=await _f('/api/cart'); C=res.items||[]; const B=N('cb'); B.textContent=res.itemCount; B.classList.toggle('hidden',res.itemCount===0);
+    if(!silent){
+      N('cb').classList.add('badge-bounce'); setTimeout(()=>N('cb').classList.remove('badge-bounce'),300);
+      N('ce').classList.toggle('hidden',C.length>0); N('cs').classList.toggle('hidden',C.length===0); N('cl').textContent=`${C.length} Items`;
+      N('ci').innerHTML=C.map(i=>`<div class="flex gap-3 bg-surface-container rounded-xl p-2 items-center"><img src="${img(i.img,150)}" class="w-16 h-16 rounded-lg object-cover"/><div class="flex-1 min-w-0"><h3 class="text-sm font-bold truncate">${i.name}</h3><p class="text-[10px] opacity-60 mb-1">${i.unit} · ₹${i.price}</p><div class="flex items-center gap-2"><div class="flex bg-white dark:bg-[#121212] rounded-lg items-center text-xs"><button onclick="uC('${i.product_id}',${i.qty-1})" class="px-2 py-1">-</button><span class="font-bold w-4 text-center">${i.qty}</span><button onclick="uC('${i.product_id}',${i.qty+1})" class="px-2 py-1">+</button></div></div></div><div class="text-right pr-2"><div class="font-bold text-sm">₹${i.qty*i.price}</div></div></div>`).join('');
+      // Slots & Address
+      if(CU){
+        const [as,ss]=await Promise.all([_f('/api/addresses'),_f('/api/delivery-slots')]); 
+        const ad = as && as.length ? (as.find(a=>a.is_default)||as[0]) : null;
+        if(ad) N('cart-addr-txt').textContent=ad.label+': '+ad.full_address; else N('cart-addr-txt').textContent='Add Address';
+        N('cart-slots').innerHTML=(ss||[]).map((s,i)=>`<div class="flex-shrink-0 border-2 rounded-xl p-2 cursor-pointer w-28 text-center ${slot===s.id||(i===0&&!slot)?'border-primary bg-primary/5':'border-transparent bg-surface-container'}" onclick="slot='${s.id}';lC()"><div class="text-[10px] font-bold uppercase opacity-60">${s.day}</div><div class="text-xs font-bold py-1">${s.time}</div><div class="text-[9px] ${s.fee===0?'text-green-600 font-bold':'opacity-50'}">${s.fee===0?'FREE':'₹'+s.fee}</div></div>`).join('');
+        if(!slot && ss && ss.length) slot=ss[0].id;
+      }
+      // Math
+      const sub=res.total||0; const dfee=C.length?40:0; const dsc=Math.round(sub*0.05); const mlo=CU?Math.min(CU.loyalty_points,Math.floor(sub*0.1)):0; lused=mlo;
+      const tot=Math.max(0,sub+dfee+tip-dsc-lused);
+      N('os').innerHTML=`<div class="flex justify-between"><span>Subtotal</span><span>₹${sub}</span></div><div class="flex justify-between"><span>Delivery</span><span>₹${dfee}</span></div><div class="flex justify-between"><span>Tip (Support Rider)</span><div><button onclick="tip=10;lC()" class="px-2 border rounded ${tip===10?'bg-primary text-white':''}">10</button><button onclick="tip=30;lC()" class="px-2 border rounded ml-1 ${tip===30?'bg-primary text-white':''}">30</button><button onclick="tip=50;lC()" class="px-2 border rounded ml-1 ${tip===50?'bg-primary text-white':''}">50</button></div></div><div class="flex justify-between text-green-600 font-bold"><span>Basket Pass Discount</span><span>-₹${dsc}</span></div>`;
+      N('oloyalty').innerHTML=CU&&CU.loyalty_points>0?`<span class="text-xs text-secondary">Using ${lused} Loyalty Points (Max 10%)</span><span class="text-xs text-secondary">-₹${lused}</span>`:'';
+      N('ot').textContent='₹'+tot;
     }
-    // Math
-    const sub=res.total; const dfee=C.length?40:0; const dsc=Math.round(sub*0.05); const mlo=CU?Math.min(CU.loyalty_points,Math.floor(sub*0.1)):0; lused=mlo;
-    const tot=Math.max(0,sub+dfee+tip-dsc-lused);
-    N('os').innerHTML=`<div class="flex justify-between"><span>Subtotal</span><span>₹${sub}</span></div><div class="flex justify-between"><span>Delivery</span><span>₹${dfee}</span></div><div class="flex justify-between"><span>Tip (Support Rider)</span><div><button onclick="tip=10;lC()" class="px-2 border rounded ${tip===10?'bg-primary text-white':''}">10</button><button onclick="tip=30;lC()" class="px-2 border rounded ml-1 ${tip===30?'bg-primary text-white':''}">30</button><button onclick="tip=50;lC()" class="px-2 border rounded ml-1 ${tip===50?'bg-primary text-white':''}">50</button></div></div><div class="flex justify-between text-green-600 font-bold"><span>Basket Pass Discount</span><span>-₹${dsc}</span></div>`;
-    N('oloyalty').innerHTML=CU&&CU.loyalty_points>0?`<span class="text-xs text-secondary">Using ${lused} Loyalty Points (Max 10%)</span><span class="text-xs text-secondary">-₹${lused}</span>`:'';
-    N('ot').textContent='₹'+tot;
-  }
+  } catch(e){ console.error(e); msg('Error loading cart'); }
 }
-async function aC(pid){ await _f('/api/cart',{method:'POST',body:JSON.stringify({productId:pid,qty:1})}); lC(true); msg('Added to Basket!'); }
-async function uC(pid,q){ if(q<1)await _f('/api/cart/'+pid,{method:'DELETE'}); else await _f('/api/cart/'+pid,{method:'PUT',body:JSON.stringify({qty:q})}); lC(); }
+async function aC(pid){ try{await _f('/api/cart',{method:'POST',body:JSON.stringify({productId:pid,qty:1})}); lC(true); msg('Added to Basket!');}catch(e){msg('Failed to add');} }
+async function uC(pid,q){ try{if(q<1)await _f('/api/cart/'+pid,{method:'DELETE'}); else await _f('/api/cart/'+pid,{method:'PUT',body:JSON.stringify({qty:q})}); lC();}catch(e){msg('Failed to update');} }
 async function cancelSub(id){
   if(!confirm("Cancel this subscription?")) return;
-  await _f('/api/sub-boxes/'+id,{method:'DELETE'});
-  msg("Subscription cancelled.");
-  lA();
+  try{await _f('/api/sub-boxes/'+id,{method:'DELETE'}); msg("Subscription cancelled."); lA();}catch(e){msg('Error cancelling');}
 }
 
 async function po(){
   if(!CU){ showAuth('login'); return; }
-  const res=await _f('/api/orders',{method:'POST',body:JSON.stringify({delivery:'express',slot,tip,loyalty_used:lused})});
-  if(res.error){ msg(res.error); return; } msg('Order Placed! 🎉'); lC(true); nav('tracking',res.order.id);
+  const btn = document.querySelector('button[onclick="po()"]');
+  if(btn) { btn.disabled = true; btn.innerHTML = 'Placing... <span class="material-symbols-outlined skeleton rounded-full w-4 h-4"></span>'; }
+  try {
+    const res=await _f('/api/orders',{method:'POST',body:JSON.stringify({delivery:'express',slot,tip,loyalty_used:lused})});
+    if(btn) { btn.disabled = false; btn.innerHTML = 'Place Order <span class="material-symbols-outlined">arrow_forward</span>'; }
+    if(res.error){ msg(res.error); return; } msg('Order Placed! 🎉'); lC(true); nav('tracking',res.order.id);
+  } catch(e) {
+    if(btn) { btn.disabled = false; btn.innerHTML = 'Place Order <span class="material-symbols-outlined">arrow_forward</span>'; }
+    msg('Failed to place order. Try again.');
+  }
 }
 
 // Account
