@@ -150,6 +150,49 @@ def admin_update_product():
         conn.execute(f"UPDATE products SET {set_sql} WHERE id=?", list(upd.values()) + [pid])
     return jsonify({"success":True})
 
+# ─── Admin Analytics ───────────────────────────────────────────
+@app.route("/api/admin/analytics")
+def get_admin_analytics():
+    if not is_admin(): return jsonify({"error":"Unauthorized"}), 403
+    with db.get_db() as conn:
+        # 1. Summary Stats
+        summary = conn.execute("SELECT COUNT(*) as total_orders, SUM(grand_total) as total_revenue FROM orders").fetchone()
+        user_count = conn.execute("SELECT COUNT(*) as total_users FROM users").fetchone()
+        
+        # 2. Daily Revenue (Last 7 Days)
+        daily_rev = conn.execute("""
+            SELECT date(created_at) as day, SUM(grand_total) as rev 
+            FROM orders 
+            WHERE created_at > datetime('now', '-7 days') 
+            GROUP BY day 
+            ORDER BY day
+        """).fetchall()
+        
+        # 3. Top Products
+        top_items = conn.execute("""
+            SELECT product_name, SUM(qty) as total_qty 
+            FROM order_items 
+            GROUP BY product_id 
+            ORDER BY total_qty DESC LIMIT 5
+        """).fetchall()
+        
+        # 4. Recent Customer Growth
+        daily_users = conn.execute("""
+            SELECT date(created_at) as day, COUNT(*) as cnt 
+            FROM users 
+            WHERE created_at > datetime('now', '-7 days') 
+            GROUP BY day 
+            ORDER BY day
+        """).fetchall()
+
+    return jsonify({
+        "summary": dict(summary),
+        "user_count": user_count["total_users"],
+        "daily_revenue": [dict(r) for r in daily_rev],
+        "top_products": [dict(r) for r in top_items],
+        "daily_users": [dict(r) for r in daily_users]
+    })
+
 # ─── Rider Dashboard ───────────────────────────────────────────
 @app.route("/api/rider/orders")
 def get_rider_orders():
@@ -465,7 +508,23 @@ def admin_status(oid):
     db.update_order_status(oid, request.get_json().get("status","Confirmed"))
     return jsonify({"success":True})
 
-# ─── Static ─────────────────────────────────────────────────
+# ─── Static & SEO ─────────────────────────────────────────────
+@app.route("/robots.txt")
+def robots():
+    return "User-agent: *\nAllow: /\nSitemap: http://localhost:5000/sitemap.xml", 200, {'Content-Type': 'text/plain'}
+
+@app.route("/sitemap.xml")
+def sitemap():
+    # Dynamic sitemap (simplified)
+    with db.get_db() as conn:
+        pids = [p["id"] for p in db.drs(conn.execute("SELECT id FROM products WHERE is_active=1").fetchall())]
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    xml += '<url><loc>http://localhost:5000/</loc><priority>1.0</priority></url>\n'
+    for pid in pids:
+        xml += f'<url><loc>http://localhost:5000/product/{pid}</loc><priority>0.8</priority></url>\n'
+    xml += '</urlset>'
+    return xml, 200, {'Content-Type': 'application/xml'}
+
 @app.route("/")
 def idx(): return send_from_directory(app.static_folder, "index.html")
 @app.route("/admin")

@@ -2,8 +2,50 @@
 <html lang="en" class="light">
 <head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Local Basket – Premium</title>
-<meta name="description" content="Local Basket: fresh organic produce delivered."/>
+<title>Local Basket | Fresh Groceries Delivered in 30 Mins</title>
+<meta name="description" content="Shop fresh vegetables, fruits, dairy, and daily staples from local farms. Express 30-minute delivery to your doorstep. Best prices & organic quality.">
+<meta name="keywords" content="grocery delivery, fresh vegetables, organic fruits, local basket, online grocery store, farm fresh">
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="http://localhost:5000/">
+<meta property="og:title" content="Local Basket | Fresh Groceries & Organic Produce">
+<meta property="og:description" content="Fresh farm-to-table groceries delivered in 30 minutes. Shop vegetables, fruits, and more.">
+<meta property="og:image" content="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80">
+
+<!-- Twitter -->
+<meta property="twitter:card" content="summary_large_image">
+<meta property="twitter:url" content="http://localhost:5000/">
+<meta property="twitter:title" content="Local Basket | Fresh Groceries">
+<meta property="twitter:description" content="Shop fresh farm produce with express 30-min delivery.">
+<meta property="twitter:image" content="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80">
+
+<!-- JSON-LD Structured Data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "GroceryStore",
+  "name": "Local Basket",
+  "image": "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80",
+  "url": "http://localhost:5000",
+  "telephone": "+91-9876543210",
+  "priceRange": "$$",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "123 Farm Lane",
+    "addressLocality": "Mumbai",
+    "postalCode": "400001",
+    "addressCountry": "IN"
+  },
+  "openingHoursSpecification": {
+    "@type": "OpeningHoursSpecification",
+    "dayOfWeek": [ "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" ],
+    "opens": "06:00",
+    "closes": "23:00"
+  }
+}
+</script>
+
 <link rel="manifest" href="/manifest.json"/>
 <meta name="theme-color" content="#173901"/>
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>

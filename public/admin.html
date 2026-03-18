@@ -7,6 +7,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 body{font-family:'Inter',sans-serif}
 .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400}
@@ -44,6 +45,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
   <nav class="bg-white border-b flex gap-1 px-4 sm:px-6 py-2 overflow-x-auto">
     <button onclick="showTab('dashboard')" class="tab-btn active px-4 py-1.5 rounded-full text-xs font-bold" data-tab="dashboard">Dashboard</button>
     <button onclick="showTab('products')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-100" data-tab="products">Products</button>
+    <button onclick="showTab('analytics')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-100" data-tab="analytics">Analytics</button>
     <button onclick="showTab('orders')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-100" data-tab="orders">Orders</button>
     <button onclick="showTab('inventory')" class="tab-btn px-4 py-1.5 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-100" data-tab="inventory">Inventory</button>
   </nav>
@@ -87,6 +89,31 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
           </thead>
           <tbody id="inv-tbody"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Analytics -->
+    <div id="tab-analytics" class="tab-content hidden">
+      <h2 class="text-xl font-bold mb-4 text-[#173901]">Business Analytics</h2>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Revenue (Last 7 Days)</h3>
+          <canvas id="revenueChart" height="200"></canvas>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Top 5 Products</h3>
+          <canvas id="topProductsChart" height="200"></canvas>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">New Customers</h3>
+          <canvas id="userGrowthChart" height="200"></canvas>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Summary Stats</h3>
+          <div id="analytics-stats" class="space-y-4 pt-4"></div>
+        </div>
       </div>
     </div>
   </main>
@@ -169,6 +196,54 @@ function showTab(tab){
   if(tab==='products')loadProducts();
   if(tab==='orders')loadOrders();
   if(tab==='inventory')loadInventory();
+  if(tab==='analytics')loadAnalytics();
+}
+
+let charts = {};
+async function loadAnalytics(){
+  const data = await F('/api/admin/analytics');
+  const {summary, daily_revenue, top_products, daily_users, user_count} = data;
+  
+  // Summary Stats
+  document.getElementById('analytics-stats').innerHTML = `
+    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+      <span class="text-xs font-bold text-gray-500 uppercase">Total Revenue</span>
+      <span class="text-lg font-black text-[#173901]">₹${Math.round(summary.total_revenue || 0).toLocaleString()}</span>
+    </div>
+    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+      <span class="text-xs font-bold text-gray-500 uppercase">Total Orders</span>
+      <span class="text-lg font-black text-[#173901]">${summary.total_orders || 0}</span>
+    </div>
+    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+      <span class="text-xs font-bold text-gray-500 uppercase">Total Customers</span>
+      <span class="text-lg font-black text-[#173901]">${user_count || 0}</span>
+    </div>
+  `;
+
+  // Helper to destroy and recreate charts
+  const rc = (id, type, labels, data, label, color) => {
+    if(charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), {
+      type: type,
+      data: {
+        labels: labels,
+        datasets: [{
+          label: label,
+          data: data,
+          backgroundColor: color,
+          borderColor: color.replace('0.2', '1'),
+          borderWidth: 2,
+          tension: 0.4
+        }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+  };
+
+  // Render Charts
+  rc('revenueChart', 'line', daily_revenue.map(r=>r.day), daily_revenue.map(r=>r.rev), 'Revenue', 'rgba(23, 57, 1, 0.2)');
+  rc('topProductsChart', 'bar', top_products.map(p=>p.product_name), top_products.map(p=>p.total_qty), 'Units Sold', 'rgba(232, 135, 58, 0.2)');
+  rc('userGrowthChart', 'line', daily_users.map(u=>u.day), daily_users.map(u=>u.cnt), 'New Users', 'rgba(59, 130, 246, 0.2)');
 }
 
 // Dashboard
