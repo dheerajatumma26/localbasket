@@ -8,6 +8,8 @@ from flask_cors import CORS
 import database as db
 import json, time, threading, requests, hashlib, os, smtplib, uuid
 from email.message import EmailMessage
+from dotenv import load_dotenv
+load_dotenv()
 
 def send_email(to_email, subject, body):
     sender = os.environ.get("EMAIL_USER")
@@ -69,10 +71,18 @@ def signup():
     threading.Thread(target=send_email, args=(e, "Welcome to Local Basket!", body)).start()
     return jsonify({"success":True,"user":db.get_user(uid)})
 
+reset_requests = {} # {email: last_request_time}
+
 @app.route("/api/auth/forgot-password", methods=["POST"])
 def forgot_password():
     e = request.get_json().get("email", "").strip()
     if not e: return jsonify({"error":"Email required"}), 400
+    
+    now = time.time()
+    if e in reset_requests and now - reset_requests[e] < 900:
+        return jsonify({"error":"Please wait 15 minutes before requesting another reset link."}), 429
+    reset_requests[e] = now
+    
     with db.get_db() as conn:
         u = conn.execute("SELECT id, name FROM users WHERE email=?", (e,)).fetchone()
         if not u: return jsonify({"success":True})
