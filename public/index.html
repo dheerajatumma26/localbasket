@@ -41,6 +41,11 @@ dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
 .track-step.done .track-dot,.track-step.done .track-line{background:#173901}
 .dark .track-step.done .track-dot,.dark .track-step.done .track-line{background:#c4efa3}
 .oos{opacity:.5;pointer-events:none;filter:grayscale(100%)}
+.product-card{transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);}
+.product-card:hover{transform:translateY(-4px);box-shadow:0 10px 20px -10px rgba(0,0,0,0.1);}
+.dark .product-card:hover{box-shadow:0 10px 20px -10px rgba(0,0,0,0.5);}
+.hide-scrollbar::-webkit-scrollbar{display:none;}
+.hide-scrollbar{-ms-overflow-style:none;scrollbar-width:none;}
 </style>
 </head>
 <body class="bg-surface text-on-surface font-body min-h-screen transition-colors duration-300">
@@ -113,35 +118,44 @@ dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
     </div>
   </header>
   <main class="max-w-3xl mx-auto px-3 space-y-6 mt-3">
-    <!-- Hero & Flash Sales -->
-    <div id="hdr-skeleton" class="w-full h-40 rounded-xl skeleton"></div>
-    <div id="hdr-content" class="hidden space-y-4">
-      <section class="flex flex-col gap-2 p-6 rounded-2xl bg-gradient-to-br from-primary to-[#2a5c05] text-white shadow-xl relative overflow-hidden mt-2">
-        <div class="absolute -right-10 -top-10 w-40 h-40 bg-white opacity-10 rounded-full blur-xl"></div>
-        <h1 class="font-headline text-3xl sm:text-4xl font-black tracking-tight leading-tight z-10">Fresh from<br/>Morning Harvest</h1>
-        <p class="text-xs opacity-90 z-10 max-w-[200px]">The best local organic produce, groceries, and daily essentials delivered instantly.</p>
+  <main class="max-w-3xl mx-auto px-3 space-y-8 mt-4">
+    <!-- Hero Section -->
+    <div id="hdr-skeleton" class="w-full h-48 rounded-2xl skeleton"></div>
+    <div id="hdr-content" class="hidden space-y-6">
+      <section class="flex flex-col gap-2 p-8 rounded-3xl bg-gradient-to-br from-primary via-[#2a5c05] to-primary text-white shadow-2xl relative overflow-hidden">
+        <div class="absolute -right-20 -top-20 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl animate-pulse"></div>
+        <div class="relative z-10">
+          <span class="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase mb-4">Fresh Direct</span>
+          <h1 class="font-headline text-4xl sm:text-5xl font-black tracking-tight leading-tight mb-2">Morning<br/><span class="italic text-primary-fixed">Harvest</span></h1>
+          <p class="text-sm opacity-90 max-w-[240px] leading-relaxed">Premium organic groceries delivered from local farms to your doorstep in 30 mins.</p>
+        </div>
       </section>
-      <section id="flash-sales" class="flex overflow-x-auto gap-3 hide-scrollbar -mx-3 px-3"></section>
+
+      <!-- Flash Sales Section -->
+      <section>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-headline text-xl font-bold flex items-center gap-2 text-primary dark:text-primary-fixed">
+            <span class="material-symbols-outlined text-orange-500" style="font-variation-settings:'FILL' 1">bolt</span> Flash Deals
+          </h3>
+          <span class="text-[10px] font-bold text-red-500 animate-pulse uppercase tracking-widest">Ending Soon</span>
+        </div>
+        <div id="flash-sales" class="flex overflow-x-auto gap-4 hide-scrollbar -mx-3 px-3"></div>
+      </section>
     </div>
-    <!-- Catchy Categories -->
-    <section>
-      <div class="flex items-center justify-between mb-3"><h3 class="font-headline text-base">Explore Categories</h3></div>
-      <div class="flex overflow-x-auto gap-3 hide-scrollbar -mx-3 px-3" id="home-cats"></div>
-    </section>
-    <!-- Recommendations -->
-    <section>
-      <h3 class="font-headline text-base mb-3">For You</h3>
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="home-recs"></div>
-    </section>
+
+    <!-- Dynamic Category Sections -->
+    <div id="home-sections" class="space-y-10"></div>
+
     <!-- Subscription Box Pitch -->
-    <section class="bg-primary-container text-white p-4 rounded-xl relative overflow-hidden">
+    <section class="bg-primary text-white p-8 rounded-3xl relative overflow-hidden shadow-xl border border-white/10">
       <div class="relative z-10">
-        <h3 class="font-headline text-xl mb-1">Weekly Farm Boxes</h3>
-        <p class="text-xs text-white/70 mb-3 max-w-[200px]">Get fresh seasonal produce delivered every week automatically.</p>
-        <button onclick="nav('account')" class="bg-white text-primary px-4 py-1.5 font-bold text-xs rounded-full">Subscribe ₹499/wk</button>
+        <h3 class="font-headline text-2xl mb-2">Weekly Farm Boxes</h3>
+        <p class="text-sm text-white/70 mb-6 max-w-[220px]">Hand-picked seasonal variety delivered every week automatically.</p>
+        <button onclick="nav('account')" class="bg-white text-primary px-8 py-3 font-bold text-sm rounded-full shadow-lg transition-transform active:scale-95">Subscribe ₹499/wk</button>
       </div>
-      <span class="material-symbols-outlined absolute -right-4 -bottom-4 text-[100px] text-white/10" style="font-variation-settings:'FILL' 1">featured_seasonal_and_gifts</span>
+      <span class="material-symbols-outlined absolute -right-8 -bottom-8 text-[180px] text-white/10 rotate-12" style="font-variation-settings:'FILL' 1">vibrant_content</span>
     </section>
+  </main>
   </main>
 </div>
 
@@ -282,13 +296,25 @@ async function lo(){ await _f('/api/auth/logout',{method:'POST'}); CU=null; msg(
 
 // Components
 function pct(p){
-  const oos=p.stock<1; const bd=p.badge?`<span class="absolute top-1 left-1 bg-secondary text-white text-[8px] px-1.5 py-0.5 rounded uppercase font-bold">${p.badge}</span>`:p.discount_pct?`<span class="absolute top-1 left-1 bg-red-600 text-white text-[8px] px-1.5 py-0.5 rounded uppercase font-bold">${p.discount_pct}% OFF</span>`:'';
-  return `<div class="bg-white dark:bg-[#1e1e1e] rounded-xl overflow-hidden border border-black/5 dark:border-white/5 shadow-sm ${oos?'oos':''}" onclick="nav('product','${p.product_id||p.id}')">
-    <div class="relative aspect-square"><img src="${img(p.img,300)}" class="w-full h-full object-cover" loading="lazy"/>${bd}</div>
-    <div class="p-2.5">
-      <h4 class="text-xs font-bold truncate">${p.name}</h4><p class="text-[9px] opacity-50 uppercase tracking-wider truncate mb-1.5">${p.farm}</p>
-      <div class="flex items-center justify-between"><div class="flex flex-col"><span class="text-primary dark:text-primary-fixed font-bold text-xs">₹${p.sale_price||p.price}<span class="text-[9px] font-normal opacity-50">/${p.unit}</span></span>${p.sale_price?`<span class="text-[9px] line-through opacity-50">₹${p.original_price}</span>`:''}</div>
-      ${oos?'':'<button onclick="event.stopPropagation(); aC(\''+(p.product_id||p.id)+'\')" class="w-6 h-6 rounded-full bg-primary/10 text-primary dark:bg-primary-fixed/20 dark:text-primary-fixed flex items-center justify-center"><span class="material-symbols-outlined text-[14px]">add</span></button>'}
+  const oos = p.stock <= 0;
+  const bd = p.badge ? `<div class="absolute top-2 left-2 bg-secondary text-white text-[8px] font-bold px-2 py-0.5 rounded-full z-10 shadow-sm">${p.badge}</div>` : '';
+  const discount = p.original_price ? Math.round(((p.original_price - p.sale_price) / p.original_price) * 100) : 0;
+  const offBadge = discount > 0 ? `<div class="absolute top-2 right-2 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">-${discount}%</div>` : '';
+  
+  return `<div class="product-card bg-white dark:bg-[#1e1e1e] rounded-2xl overflow-hidden border border-black/5 dark:border-white/5 shadow-sm ${oos?'oos':''}" onclick="nav('product','${p.product_id||p.id}')">
+    <div class="relative aspect-square overflow-hidden">
+      <img src="${img(p.img,400)}" class="w-full h-full object-cover" loading="lazy"/>
+      ${bd}${offBadge}
+    </div>
+    <div class="p-3">
+      <h4 class="text-xs font-bold truncate leading-snug mb-0.5">${p.name}</h4>
+      <p class="text-[9px] opacity-50 font-medium uppercase tracking-wider truncate mb-2">${p.farm || 'Local Farm'}</p>
+      <div class="flex items-center justify-between mt-auto">
+        <div class="flex flex-col">
+          <span class="text-primary dark:text-primary-fixed font-black text-xs leading-none">₹${p.sale_price||p.price}<span class="text-[9px] font-normal opacity-50 ml-0.5">/${p.unit}</span></span>
+          ${p.sale_price?`<span class="text-[9px] line-through opacity-40 font-medium mt-0.5">₹${p.original_price}</span>`:''}
+        </div>
+        ${oos?'':'<button onclick="event.stopPropagation(); aC(\''+(p.product_id||p.id)+'\')" class="w-7 h-7 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all flex items-center justify-center translate-x-1"><span class="material-symbols-outlined text-[16px]">add</span></button>'}
       </div>
     </div></div>`;
 }
@@ -297,13 +323,49 @@ function pct(p){
 async function lH(){
   N('hdr-skeleton').classList.remove('hidden'); N('hdr-content').classList.add('hidden');
   try {
-    const [deals, recs] = await Promise.all([_f('/api/deals'), _f('/api/recommendations')]);
-    N('flash-sales').innerHTML = (deals||[]).map(d=>`<div class="flex-shrink-0 w-40 cursor-pointer" onclick="nav('product','${d.product_id}')"><div class="relative h-24 rounded-xl overflow-hidden mb-1"><img src="${img(d.img,300)}" class="w-full h-full object-cover"/><div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div><div class="absolute bottom-2 left-2 text-white"><p class="text-[9px] font-bold text-red-400">⚡ FLASH SALE</p><p class="text-xs font-bold leading-tight">${d.name}</p><p class="text-xs">₹${d.sale_price} <s class="text-[9px] opacity-70">₹${d.original_price}</s></p></div></div></div>`).join('');
-    N('home-recs').innerHTML = (recs||[]).map(pct).join('');
-    const cs=['vegetables','fruits','dairy','bakery','spices','meat','snacks']; const ci={'vegetables':'🥦','fruits':'🍎','dairy':'🥛','bakery':'🍞','spices':'🌶️','meat':'🥩','snacks':'🥜'};
-    N('home-cats').innerHTML = cs.map(c=>`<div class="flex flex-col items-center gap-1 cursor-pointer" onclick="rc='${c}';N('si').value='';nav('search')"><div class="w-14 h-14 bg-surface-container rounded-full flex items-center justify-center text-2xl">${ci[c]}</div><span class="text-[10px] uppercase font-bold opacity-60">${c}</span></div>`).join('');
-    if(CU){ const as=await _f('/api/addresses'); const ad=as&&as.length?(as.find(a=>a.is_default)||as[0]):null; N('hdr-addr').innerHTML = ad?`${ad.label} <span class="material-symbols-outlined text-[10px]">expand_more</span>`:'Select Address+'; }
-    else N('hdr-addr').innerHTML = `Select Address <span class="material-symbols-outlined text-[10px]">expand_more</span>`;
+    const data = await _f('/api/home');
+    const {deals, categories} = data;
+    
+    // Flash Sales
+    N('flash-sales').innerHTML = (deals||[]).map(d=>`
+      <div class="flex-shrink-0 w-48 group cursor-pointer" onclick="nav('product','${d.product_id}')">
+        <div class="relative h-28 rounded-2xl overflow-hidden mb-2 shadow-md group-hover:shadow-lg transition-shadow">
+          <img src="${img(d.img,400)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
+          <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+          <div class="absolute bottom-3 left-3 text-white">
+            <p class="text-[10px] font-black text-orange-400 uppercase tracking-tighter mb-0.5">⚡ Flash Sale</p>
+            <p class="text-xs font-bold leading-tight truncate w-32">${d.name}</p>
+            <p class="text-xs font-black">₹${d.sale_price} <s class="text-[10px] font-normal opacity-60 ml-1">₹${d.original_price}</s></p>
+          </div>
+        </div>
+      </div>`).join('');
+
+    // Category Sections
+    N('home-sections').innerHTML = (categories||[]).map(c => `
+      <section>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-headline text-lg font-bold">${c.name}</h3>
+          <button onclick="rc='${c.id}';nav('search')" class="text-primary dark:text-primary-fixed text-[10px] font-black uppercase tracking-widest flex items-center gap-1">View All <span class="material-symbols-outlined text-xs">arrow_forward</span></button>
+        </div>
+        <div class="flex overflow-x-auto gap-4 hide-scrollbar -mx-3 px-3 pb-2">
+          ${c.items.map(p => `
+            <div class="flex-shrink-0 w-36">
+              ${pct(p)}
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `).join('');
+
+    // Update Header Address
+    if(CU){ 
+        const as = await _f('/api/addresses'); 
+        const ad = as && as.length ? (as.find(a=>a.is_default) || as[0]) : null; 
+        N('hdr-addr').innerHTML = ad ? `${ad.label} <span class="material-symbols-outlined text-[10px]">expand_more</span>` : 'Add Address+'; 
+    } else {
+        N('hdr-addr').innerHTML = `Select Address <span class="material-symbols-outlined text-[10px]">expand_more</span>`;
+    }
+
   } catch (e) { console.error("Home loading error", e); msg("Failed to load some data"); }
   N('hdr-skeleton').classList.add('hidden'); N('hdr-content').classList.remove('hidden');
 }

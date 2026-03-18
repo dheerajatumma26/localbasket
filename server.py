@@ -130,6 +130,18 @@ def prefs():
     db.update_user_pref(u["id"], **{k:v for k,v in request.get_json().items() if k in ("dark_mode","name","phone")})
     return jsonify({"success":True})
 
+# ─── Home Dashboard ────────────────────────────────────────────
+@app.route("/api/home")
+def get_home():
+    with db.get_db() as conn:
+        deals = [dict(f) for f in conn.execute("SELECT f.product_id, f.sale_price, p.price as original_price, p.img, p.name FROM flash_sales f JOIN products p ON f.product_id=p.id WHERE f.ends_at > datetime('now')").fetchall()]
+        cats = ["vegetables", "fruits", "dairy", "staples", "snacks", "spices"]
+        categories = []
+        for c in cats:
+            items = db.drs(conn.execute("SELECT * FROM products WHERE category=? AND is_active=1 ORDER BY id DESC LIMIT 10", (c,)).fetchall())
+            if items: categories.append({"id": c, "name": c.title() + " & More", "items": items})
+        return jsonify({"deals": deals, "categories": categories})
+
 # ─── Products ────────────────────────────────────────────────
 @app.route("/api/products")
 def get_products():
